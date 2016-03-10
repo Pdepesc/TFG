@@ -16,6 +16,7 @@ namespace EvaluacionSistema
             Computer myPc = new Computer() { CPUEnabled=true, FanControllerEnabled=true, GPUEnabled=true, HDDEnabled=true, MainboardEnabled=true, RAMEnabled=true };
 
             myPc.Open();
+            Console.WriteLine(myPc.GetReport());
 
             getHardware(myPc);
             
@@ -31,12 +32,12 @@ namespace EvaluacionSistema
             {
                 hardware.Update();
                 Console.WriteLine(hardware);
-                Console.WriteLine(tab + hardware.Name + " - " + hardware.HardwareType);
+                Console.WriteLine(tab + hardware.HardwareType + " - " + hardware.Name);
                 Console.WriteLine(tab + hardware.Identifier);
                 Console.WriteLine(tab + "Sensores - " + hardware.Sensors.Length);
-                getSensores(hardware, tab);
+                if(hardware.Sensors.Length > 0) getSensores(hardware, tab);
                 Console.WriteLine(tab + "SubHardware - " + hardware.SubHardware.Length);
-                getSubHardware(hardware, tab);
+                if(hardware.SubHardware.Length > 0) getSubHardware(hardware, tab);
             }
         }
         
@@ -47,13 +48,12 @@ namespace EvaluacionSistema
             {
                 subhardware.Update();
                 Console.WriteLine(tab + subhardware);
-                Console.WriteLine(tab + subhardware.Name + " - " + subhardware.HardwareType);
+                Console.WriteLine(tab + subhardware.HardwareType + " - " + subhardware.Name);
                 Console.WriteLine(tab + subhardware.Identifier);
-                Console.WriteLine(tab + subhardware.Parent.Name);
                 Console.WriteLine(tab + "Sensores - " + subhardware.Sensors.Length);
-                getSensores(subhardware, tab);
+                if (subhardware.Sensors.Length > 0) getSensores(subhardware, tab);
                 Console.WriteLine(tab + "SubHardware - " + subhardware.SubHardware.Length);
-                getSubHardware(subhardware, tab);
+                if (subhardware.SubHardware.Length > 0) getSubHardware(subhardware, tab);
             }
         }
 
@@ -62,20 +62,16 @@ namespace EvaluacionSistema
             tab = tab + "\t";
             foreach (ISensor sensor in hardware.Sensors)
             {
-                Console.WriteLine(tab + sensor.Name);
-                Console.WriteLine(tab + sensor.SensorType);
+                Console.WriteLine(tab + sensor.SensorType + " - " + sensor.Name);
                 Console.WriteLine(tab + sensor.Identifier);
-                Console.WriteLine(tab + sensor.Control);
                 Console.WriteLine(tab + sensor.Hardware);
                 Console.WriteLine(tab + sensor.Index);
                 Console.WriteLine(tab + sensor.IsDefaultHidden);
-                Console.WriteLine(tab + sensor.Max);
-                Console.WriteLine(tab + sensor.Min);
-                Console.WriteLine(tab + "Parametros - " + sensor.Parameters.Length); //getParameters() IParameter
-                getParametrosSensor(sensor, tab);
-                Console.WriteLine(tab + sensor.Value);
-                Console.WriteLine(tab + "Valores - " + sensor.Values.Count());     //getValues() SensorValue
-                getValoresSensor(sensor, tab);
+                Console.WriteLine(tab + "Max: " + sensor.Max + " - Min: " + sensor.Min + " - Valor: " + sensor.Value);
+                Console.WriteLine(tab + "Parametros - " + sensor.Parameters.Length);
+                if (sensor.Parameters.Length > 0) getParametrosSensor(sensor, tab);
+                Console.WriteLine(tab + "Valores - " + sensor.Values.Count());
+                if (sensor.Values.Count() > 0) getValoresSensor(sensor, tab);
             }
         }
 
@@ -98,7 +94,7 @@ namespace EvaluacionSistema
             tab = tab + "\t";
             foreach (SensorValue valor in sensor.Values)
             {
-                Console.WriteLine(tab + valor.Time + ": " + valor.Value);
+                Console.WriteLine(tab + "- " + valor.Time + ": " + valor.Value);
             }
         }
     }
