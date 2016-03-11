@@ -13,22 +13,9 @@ namespace Pruebas
 {
     class Program
     {
-        /*static void Main(string[] args)
-        {
-
-            cpuUsage();
-            RegistryKey rk = Registry.Users;
-            
-            PrintKeys(rk);
-
-            Console.ReadLine(); 
-        }*/
-        
-
         public static void Main()
         {
             
-            Contadores.getCategorias();
             /*
             PerformanceCounterCategory mycat = new PerformanceCounterCategory("Red de .NET CLR");
 
@@ -199,31 +186,6 @@ namespace Pruebas
             Console.WriteLine("   TimeStamp        = " + s.TimeStamp);
             Console.WriteLine("   TimeStamp100nSec = " + s.TimeStamp100nSec);
             Console.WriteLine("++++++++++++++++++++++");
-        }
-
-        static void PrintKeys(RegistryKey rkey)
-        {
-
-            // Retrieve all the subkeys for the specified key.
-            String[] names = rkey.GetSubKeyNames();
-
-            int icount = 0;
-
-            Console.WriteLine("Subkeys of " + rkey.Name);
-            Console.WriteLine("-----------------------------------------------");
-
-            // Print the contents of the array to the console.
-            foreach (String s in names)
-            {
-                Console.WriteLine(s);
-
-                // The following code puts a limit on the number
-                // of keys displayed.  Comment it out to print the
-                // complete list.
-                icount++;
-                if (icount >= 10)
-                    break;
-            }
         }
 
         static void cpuUsage()

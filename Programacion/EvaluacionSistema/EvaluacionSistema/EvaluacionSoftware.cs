@@ -5,18 +5,26 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
+using Microsoft.Win32;
 
-namespace Pruebas
+namespace EvaluacionSistema
 {
-    class Contadores
+    class EvaluacionSoftware
     {
-        public static void getCategorias()
+        //PerformanceCounter y otros (registros, WMI, ...)
+        
+        public static void GetCategorias()
         {
-            PerformanceCounterCategory[] categorias;
-            // Retrieve the categories.
-            categorias = PerformanceCounterCategory.GetCategories();
-            // Add the retrieved categories to the list. 
+            PerformanceCounterCategory[] categorias = PerformanceCounterCategory.GetCategories();
+            foreach (PerformanceCounterCategory categoria in categorias)
+            {
+                Console.WriteLine("-----------------------------------------------------------------------");
+                Console.WriteLine(categoria.MachineName);
+                Console.WriteLine(categoria.CategoryName + " - " + categoria.CategoryType);
+                Console.WriteLine(categoria.CategoryHelp);
+                //categoria.ReadCategory(); categoria.GetCounters(); categoria.GetInstanceNames();
+            }
+            /*
             using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"C:\Users\Public\PerformanceCounters.txt"))
             {
                 for (int i = 0; i < categorias.Length; i++)
@@ -27,9 +35,10 @@ namespace Pruebas
                     getContadores(categorias[i].CategoryName.ToString(), file);
                 }
             }
+            */
         }
 
-        public static void getContadores(String categoria, System.IO.StreamWriter file)
+        private static void GetContadores(String categoria, System.IO.StreamWriter file)
         {
             string[] instanceNames;
             ArrayList counters = new ArrayList();
@@ -68,5 +77,41 @@ namespace Pruebas
                     + ex.Message);
             }
         }
+
+        //REGISTRO DE WINDOWS
+        public static void GetRegistro()
+        {
+            RegistryKey users = Registry.Users;
+            RegistryKey performance = Registry.PerformanceData;
+            RegistryKey local = Registry.LocalMachine;
+            PrintKeys(users);
+            PrintKeys(performance);
+            PrintKeys(local);
+        }
+
+        private static void PrintKeys(RegistryKey rkey)
+        {
+            // Retrieve all the subkeys for the specified key.
+            String[] names = rkey.GetSubKeyNames();
+
+            int icount = 0;
+
+            Console.WriteLine("Subkeys of " + rkey.Name);
+            Console.WriteLine("-----------------------------------------------");
+
+            // Print the contents of the array to the console.
+            foreach (String s in names)
+            {
+                Console.WriteLine(s);
+
+                // The following code puts a limit on the number
+                // of keys displayed.  Comment it out to print the
+                // complete list.
+                //icount++;
+                //if (icount >= 10)
+                //    break;
+            }
+            Console.Read();
+        } 
     }
 }
