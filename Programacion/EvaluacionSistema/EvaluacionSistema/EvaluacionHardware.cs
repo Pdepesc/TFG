@@ -16,11 +16,28 @@ namespace EvaluacionSistema
 
         public static void GetReport()
         {
+            //Este metodo no devuelve toda la info que deberia, sin embargo esa info es accesible con el GetHardware
+            Console.WriteLine("Realizando reporte...");
             miPc.Open();
-            Console.WriteLine(miPc.GetReport());
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"C:\Users\Public\HardwareReport.txt"))
+            {
+                file.WriteLine(miPc.GetReport());
+                GetReportHardware(miPc, file);
+            }
             miPc.Close();
-            Console.Read();
+            Console.WriteLine("Reporte finalizado!");
         }
+
+        private static void GetReportHardware(Computer miPc, System.IO.StreamWriter file)
+        {
+            //Este emtodo si que devuelve la info que deberia
+            file.WriteLine("----------SUBHARDWARE--------");
+            foreach(IHardware hardware in miPc.Hardware)
+            {
+                file.WriteLine(hardware.GetReport());
+            }
+        }
+
 
         public static void GetHardware()
         {

@@ -15,27 +15,33 @@ namespace EvaluacionSistema
         
         public static void GetCategorias()
         {
+            Console.WriteLine("Realizando reporte...");
             PerformanceCounterCategory[] categorias = PerformanceCounterCategory.GetCategories();
-            foreach (PerformanceCounterCategory categoria in categorias)
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"C:\Users\Public\SoftwareCategorias.txt"))
             {
-                Console.WriteLine("-----------------------------------------------------------------------");
-                Console.WriteLine(categoria.MachineName);
-                Console.WriteLine(categoria.CategoryName + " - " + categoria.CategoryType);
-                Console.WriteLine(categoria.CategoryHelp);
-                //categoria.ReadCategory(); categoria.GetCounters(); categoria.GetInstanceNames();
-            }
-            /*
-            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"C:\Users\Public\PerformanceCounters.txt"))
-            {
-                for (int i = 0; i < categorias.Length; i++)
+                foreach (PerformanceCounterCategory categoria in categorias)
                 {
-                    file.WriteLine("------------------------------------------------------");
-                    file.WriteLine(categorias[i].CategoryName.ToString());
-                    file.WriteLine("------------------------------------------------------");
-                    getContadores(categorias[i].CategoryName.ToString(), file);
+                    file.WriteLine("-----------------------------------------------------------------------");
+                    file.WriteLine(categoria.CategoryName + " - " + categoria.CategoryType);
+                    file.WriteLine(categoria.CategoryHelp);
+                    file.WriteLine("Instancias: " + categoria.GetInstanceNames().Count());
+                    ReadCategoria(categoria, file);   //Devuelve el nombre de los contadores
+                                                //categoria.GetCounters() -> da excepciones; categoria.GetInstanceNames();
                 }
             }
-            */
+            Console.WriteLine("Reporte finalizado!");
+        }
+
+        public static void ReadCategoria(PerformanceCounterCategory categoria, System.IO.StreamWriter file)
+        {
+            InstanceDataCollectionCollection idColCol = categoria.ReadCategory();
+            //Console.WriteLine("InstanceDataCollectionCollection for \"{0}\" " + "has {1} elements.", categoria.CategoryName, idColCol.Count);
+            file.WriteLine("Contadores: " + idColCol.Count);
+
+            foreach (String key in idColCol.Keys)
+            {
+                file.WriteLine("\t" + key);
+            }
         }
 
         private static void GetContadores(String categoria, System.IO.StreamWriter file)
