@@ -18,7 +18,7 @@ namespace EvaluacionSistema
             String var = Console.ReadLine();
             switch (var)
             {
-                case "1": EvaluacionHardware.GetReport();   //Fichero de texto
+                case "1": EvaluacionHardware.GetReport();
                     break;
                 case "2":
                     EvaluacionHardware.GetHardware();

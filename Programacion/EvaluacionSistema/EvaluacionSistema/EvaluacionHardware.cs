@@ -14,31 +14,82 @@ namespace EvaluacionSistema
 
         private static Computer miPc = new Computer() { CPUEnabled = true, FanControllerEnabled = true, GPUEnabled = true, HDDEnabled = true, MainboardEnabled = true, RAMEnabled = true };
 
+        //Obtener reporte (por ahora por linea de comandos) --> pasarlo a un fichero
         public static void GetReport()
         {
-            //Este metodo no devuelve toda la info que deberia, sin embargo esa info es accesible con el GetHardware
-            Console.WriteLine("Realizando reporte...");
             miPc.Open();
-            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"C:\Users\Public\HardwareReport.txt"))
-            {
-                file.WriteLine(miPc.GetReport());
-                GetReportHardware(miPc, file);
-            }
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine();
+            Console.WriteLine("Sensors");
+            Console.WriteLine();
+            GetSensors(miPc.Hardware, "");
+            Console.WriteLine();
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine();
+            Console.WriteLine("Parameters");
+            Console.WriteLine();
+            GetParameters(miPc.Hardware, "");
+            Console.WriteLine();
+            GetHardwareReport(miPc.Hardware);
             miPc.Close();
-            Console.WriteLine("Reporte finalizado!");
+            Console.Read();
         }
 
-        private static void GetReportHardware(Computer miPc, System.IO.StreamWriter file)
+        private static void GetSensors(IHardware[] hardwareCollection, String prefijo)
         {
-            //Este emtodo si que devuelve la info que deberia
-            file.WriteLine("----------SUBHARDWARE--------");
-            foreach(IHardware hardware in miPc.Hardware)
+            foreach (IHardware hardware in hardwareCollection)
             {
-                file.WriteLine(hardware.GetReport());
+                hardware.Update();
+                Console.WriteLine(prefijo + "|");
+                Console.WriteLine(prefijo + "+- " + hardware.Name + " (" + hardware.Identifier + ")");
+                if (hardware.SubHardware.Length > 0) GetSensors(hardware.SubHardware, "|  " + prefijo);
+                foreach (ISensor sensor in hardware.Sensors)
+                {
+                    String tab = "";
+                    int contador = ((26 - (sensor.Name.Length + prefijo.Length)) / 8) + (((prefijo.Length + 6 + sensor.Name.Length) % 8) != 0 ? 1 : 0);
+                    for (int i = 0; i < contador; i++) tab += "\t";
+                    Console.WriteLine(prefijo + "|  +- " + sensor.Name + tab + ":\t" +
+                        sensor.Value.ToString().PadLeft(7) + "\t" +
+                        sensor.Min.ToString().PadLeft(7) + "\t" +
+                        sensor.Max.ToString().PadLeft(7) + "\t(" +
+                        sensor.Identifier + ")");
+                }
             }
         }
 
+        private static void GetParameters(IHardware[] hardwareCollection, String prefijo)
+        {
+            foreach (IHardware hardware in hardwareCollection)
+            {
+                hardware.Update();
+                Console.WriteLine(prefijo + "|");
+                Console.WriteLine(prefijo + "+- " + hardware.Name + " (" + hardware.Identifier + ")");
+                if (hardware.SubHardware.Length > 0) GetParameters(hardware.SubHardware, "|  " + prefijo);
+                foreach (ISensor sensor in hardware.Sensors)
+                {
+                    if (sensor.Parameters.Length > 0)
+                    {
+                        Console.WriteLine(prefijo + "|  +- " + sensor.Name + " (" + sensor.Identifier + ")");
+                        foreach (IParameter parametro in sensor.Parameters)
+                        {
+                            Console.WriteLine(prefijo + "|  |  +- " + parametro.Name + " : " + parametro.DefaultValue + " : " + parametro.Value);
+                        }
+                    }
+                }
+            }
+        }
 
+        private static void GetHardwareReport(IHardware[] hardwareCollection)
+        {
+            foreach (IHardware hardware in hardwareCollection)
+            {
+                Console.WriteLine("--------------------------------------------------------------------------------");
+                Console.WriteLine();
+                Console.WriteLine(hardware.GetReport());
+            }
+        }
+
+        //Metodos de "ejemplo" para ver como se obtiene todo    --  Faltan metodos para determinar el correcto funcionamiento
         public static void GetHardware()
         {
             miPc.Open();
