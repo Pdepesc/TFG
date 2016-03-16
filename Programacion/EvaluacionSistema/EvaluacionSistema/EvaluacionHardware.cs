@@ -89,7 +89,7 @@ namespace EvaluacionSistema
             }
         }
 
-        //Metodos de "ejemplo" para ver como se obtiene todo    --  Faltan metodos para determinar el correcto funcionamiento
+        //Metodos de "ejemplo" para ver como se obtiene todo    --  Faltan metodos para determinar el correcto funcionamiento del sistema
         public static void GetHardware()
         {
             miPc.Open();
