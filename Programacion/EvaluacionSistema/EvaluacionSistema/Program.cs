@@ -11,10 +11,11 @@ namespace EvaluacionSistema
         static void Main(string[] args)
         {
             Console.WriteLine("Escoge una opción:");
-            Console.WriteLine("1: Hardware - Evaluación");
-            Console.WriteLine("2: Software - Evaluación");
-            Console.WriteLine("3: Softdware - GetCategorias");
-            Console.WriteLine("4: Softdware - GetRegistro");
+            Console.WriteLine("1: Hardware - Evaluación (Reporte)");
+            Console.WriteLine("2: Hardware - GetAll");
+            Console.WriteLine("3: Software - Evaluación (Reporte) --En construccion--");
+            Console.WriteLine("4: Software - GetAll (PerformanceCounters) --Prueba limitada a 2 items--");
+            Console.WriteLine("5: Software - GetAll (RegistryKey) --En construccion--");
             String var = Console.ReadLine();
             switch (var)
             {
@@ -22,12 +23,16 @@ namespace EvaluacionSistema
                     EvaluacionHardware.GetReport();
                     break;
                 case "2":
-                    EvaluacionSoftware.GetReport();
+                    EvaluacionHardware.GetHardware();
+                    break;
                 case "3":
-                    EvaluacionSoftware.GetCategorias();
+                    EvaluacionSoftware.GetReport(); //En construcción (a partir del GetCategories)
                     break;
                 case "4":
-                    EvaluacionSoftware.GetRegistro();
+                    EvaluacionSoftware.GetCategories();
+                    break;
+                case "5":
+                    EvaluacionSoftware.GetRegistro(); //En construccion
                     break;
                 default: break;
             }
