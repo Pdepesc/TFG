@@ -199,6 +199,10 @@ namespace EvaluacionSistema
                     file.WriteLine(categoria.CategoryName + " - " + categoria.CategoryType);
                     file.WriteLine(categoria.CategoryHelp);
                     file.WriteLine("Instancias: " + categoria.GetInstanceNames().Count());
+                    foreach (String instancia in categoria.GetInstanceNames())
+                    {
+                        file.WriteLine("\t" + instancia);
+                    }
                     ReadCategoria(categoria, file);   //Devuelve el nombre de los contadores
                                                 //categoria.GetCounters() -> da excepciones; categoria.GetInstanceNames();
                 }

@@ -15,7 +15,8 @@ namespace EvaluacionSistema
             Console.WriteLine("2: Hardware - GetAll");
             Console.WriteLine("3: Software - Evaluación (Reporte) --En construccion--");
             Console.WriteLine("4: Software - GetAll (PerformanceCounters) --Prueba limitada a 2 items--");
-            Console.WriteLine("5: Software - GetAll (RegistryKey) --En construccion--");
+            Console.WriteLine("5: Software - GetPerformanceCounters in a file");
+            Console.WriteLine("6: Software - GetAll (RegistryKey) --En construccion--");
             String var = Console.ReadLine();
             switch (var)
             {
@@ -32,6 +33,9 @@ namespace EvaluacionSistema
                     EvaluacionSoftware.GetCategories();
                     break;
                 case "5":
+                    EvaluacionSoftware.GetCategorias(); //En construccion
+                    break;
+                case "6":
                     EvaluacionSoftware.GetRegistro(); //En construccion
                     break;
                 default: break;
