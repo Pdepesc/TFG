@@ -6,6 +6,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Win32;
+using System.Security;
+using System.Security.Permissions;
 
 namespace EvaluacionSistema
 {
@@ -265,28 +267,49 @@ namespace EvaluacionSistema
         //REGISTRO DE WINDOWS
         public static void GetRegistro()
         {
-            RegistryKey users = Registry.Users;
-            RegistryKey performance = Registry.PerformanceData;
-            RegistryKey local = Registry.LocalMachine;
-            PrintKeys(users);
-            PrintKeys(performance);
-            PrintKeys(local);
-        }
-
-        private static void PrintKeys(RegistryKey rkey)
-        {
-            // Retrieve all the subkeys for the specified key.
-            String[] names = rkey.GetSubKeyNames();
-
-            Console.WriteLine("Subkeys of " + rkey.Name);
-            Console.WriteLine("-----------------------------------------------");
-
-            // Print the contents of the array to the console.
-            foreach (String s in names)
+            //TODO: añadir try catch para las excepciones de permisos de acceso al registro y comentarselo a borja
+            /*
+             * En el catch poner el nombre del registro en un fichero con los nombres de todos los registro que no he podido acceder
+             * Ejecutar todo en la estación
+             * OPbtener listado de registros no accesibles y pasarselo a borja
+            */
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"C:\Users\Public\RegistrosInaccesibles.txt"))
             {
-                Console.WriteLine(s);
+                PrintKeys(Registry.ClassesRoot, "", file);
+                PrintKeys(Registry.CurrentConfig, "", file);
+                PrintKeys(Registry.CurrentUser, "", file);
+                PrintKeys(Registry.LocalMachine, "", file);
+                PrintKeys(Registry.PerformanceData, "", file);
+                PrintKeys(Registry.Users, "", file);
             }
             Console.Read();
+        }
+
+        private static void PrintKeys(RegistryKey rkey, String prefijo, System.IO.StreamWriter file)
+        {
+            // Retrieve all the subkeys for the specified key.
+            String[] subkeys = rkey.GetSubKeyNames();
+            String[] values = rkey.GetValueNames();
+
+            Console.WriteLine(prefijo + "+- " + rkey.Name + " - " + rkey.SubKeyCount + " subkeys - " + rkey.ValueCount + " values");
+            
+            //foreach (String value in values)
+            //{
+            //    Console.WriteLine(prefijo + "|  +- " + value + ":\t" + rkey.GetValue(value) + " (" + rkey.GetValueKind(value) + ")");
+            //}
+
+            // Print the contents of the array to the console.
+            foreach (String s in subkeys)
+            {
+                try { 
+                    RegistryKey subreky = rkey.OpenSubKey(s);
+                    PrintKeys(subreky, "|  " + prefijo, file);
+                }
+                catch (System.Security.SecurityException e)
+                {
+                    file.WriteLine(rkey.Name + "/" + s);
+                }
+            }
         } 
     }
 }

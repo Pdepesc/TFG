@@ -10,8 +10,6 @@ namespace EvaluacionSistema
 {
     class EvaluacionHardware
     {
-        //Utilizar libreria OpenHardwareMonitor / Otra herramienta del estilo
-
         private static Computer miPc = new Computer() { CPUEnabled = true, FanControllerEnabled = true, GPUEnabled = true, HDDEnabled = true, MainboardEnabled = true, RAMEnabled = true };
 
         //Obtiene un Reporte con toda la información necesaria (por linea de comandos)
