@@ -1,13 +1,9 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
 using Microsoft.Win32;
-using System.Security;
-using System.Security.Permissions;
 
 namespace EvaluacionSistema
 {
@@ -267,47 +263,51 @@ namespace EvaluacionSistema
         //REGISTRO DE WINDOWS
         public static void GetRegistro()
         {
-            //TODO: añadir try catch para las excepciones de permisos de acceso al registro y comentarselo a borja
-            /*
-             * En el catch poner el nombre del registro en un fichero con los nombres de todos los registro que no he podido acceder
-             * Ejecutar todo en la estación
-             * OPbtener listado de registros no accesibles y pasarselo a borja
-            */
-            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"C:\Users\Public\RegistrosInaccesibles.txt"))
+            Console.WriteLine("Iniciando reporte del registro...");
+            using (StreamWriter registro = new StreamWriter(@"C:\Users\Public\Registro.txt"))
+            using (StreamWriter registroInaccesible = new StreamWriter(@"C:\Users\Public\RegistrosInaccesibles.txt"))
             {
-                PrintKeys(Registry.ClassesRoot, "", file);
-                PrintKeys(Registry.CurrentConfig, "", file);
-                PrintKeys(Registry.CurrentUser, "", file);
-                PrintKeys(Registry.LocalMachine, "", file);
-                PrintKeys(Registry.PerformanceData, "", file);
-                PrintKeys(Registry.Users, "", file);
+                registro.WriteLine(Registry.ClassesRoot.Name);
+                PrintKeys(Registry.ClassesRoot, registro, registroInaccesible);
+                Console.WriteLine("ClassesRoot done");
+                registro.WriteLine(Registry.CurrentConfig.Name);
+                PrintKeys(Registry.CurrentConfig, registro, registroInaccesible);
+                Console.WriteLine("CurrentConfig done");
+                registro.WriteLine(Registry.CurrentUser.Name);
+                PrintKeys(Registry.CurrentUser, registro, registroInaccesible);
+                Console.WriteLine("CurrentUser done");
+                registro.WriteLine(Registry.LocalMachine.Name);
+                PrintKeys(Registry.LocalMachine, registro, registroInaccesible);
+                Console.WriteLine("LocalMachine done");
+                registro.WriteLine(Registry.Users.Name);
+                PrintKeys(Registry.Users, registro, registroInaccesible);
+                Console.WriteLine("Users done");
             }
+            Console.WriteLine("Reporte finalizado!");
             Console.Read();
         }
 
-        private static void PrintKeys(RegistryKey rkey, String prefijo, System.IO.StreamWriter file)
+        //TODO: algunos valores de registro los coge mal (multistring y byte)
+        //      tratar IOException de caracteres no unicode
+        private static void PrintKeys(RegistryKey rkey, StreamWriter registro, StreamWriter registroInaccesible)
         {
-            // Retrieve all the subkeys for the specified key.
             String[] subkeys = rkey.GetSubKeyNames();
             String[] values = rkey.GetValueNames();
 
-            Console.WriteLine(prefijo + "+- " + rkey.Name + " - " + rkey.SubKeyCount + " subkeys - " + rkey.ValueCount + " values");
-            
-            //foreach (String value in values)
-            //{
-            //    Console.WriteLine(prefijo + "|  +- " + value + ":\t" + rkey.GetValue(value) + " (" + rkey.GetValueKind(value) + ")");
-            //}
+            foreach (String value in values)
+            {
+                registro.WriteLine(rkey.Name + "\\" + value + ": " /*+ rkey.GetValue(value)*/ + " (" + rkey.GetValueKind(value) + ")");
+            }
 
-            // Print the contents of the array to the console.
             foreach (String s in subkeys)
             {
                 try { 
-                    RegistryKey subreky = rkey.OpenSubKey(s);
-                    PrintKeys(subreky, "|  " + prefijo, file);
+                    RegistryKey subrkey = rkey.OpenSubKey(s);
+                    PrintKeys(subrkey, registro, registroInaccesible);
                 }
                 catch (System.Security.SecurityException e)
                 {
-                    file.WriteLine(rkey.Name + "/" + s);
+                    registroInaccesible.WriteLine(rkey.Name + "\\" + s);
                 }
             }
         } 
