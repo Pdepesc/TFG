@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.IO;
 using Microsoft.Win32;
+using System.Security.AccessControl;
 
 namespace EvaluacionSistema
 {
@@ -263,9 +264,11 @@ namespace EvaluacionSistema
         //REGISTRO DE WINDOWS
         public static void GetRegistro()
         {
+            string path = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
             Console.WriteLine("Iniciando reporte del registro...");
-            using (StreamWriter registro = new StreamWriter(@"C:\Users\Public\Registro.txt"))
-            using (StreamWriter registroInaccesible = new StreamWriter(@"C:\Users\Public\RegistrosInaccesibles.txt"))
+            using (StreamWriter registro = new StreamWriter(path + "\\Registro.txt"))
+            using (StreamWriter registroInaccesible = new StreamWriter(path + "\\RegistrosInaccesibles.txt"))
+            //using (StreamWriter registroInaccesible = new StreamWriter(@"C:\Users\Public\RegistrosInaccesibles.txt"))
             {
                 registro.WriteLine(Registry.ClassesRoot.Name);
                 PrintKeys(Registry.ClassesRoot, registro, registroInaccesible);
@@ -287,16 +290,51 @@ namespace EvaluacionSistema
             Console.Read();
         }
 
-        //TODO: algunos valores de registro los coge mal (multistring y byte)
-        //      tratar IOException de caracteres no unicode
+        //TODO: tratar IOException de caracteres no unicode
         private static void PrintKeys(RegistryKey rkey, StreamWriter registro, StreamWriter registroInaccesible)
         {
             String[] subkeys = rkey.GetSubKeyNames();
-            String[] values = rkey.GetValueNames();
+            String[] valueNames = rkey.GetValueNames();
 
-            foreach (String value in values)
+            foreach (String s in valueNames)
             {
-                registro.WriteLine(rkey.Name + "\\" + value + ": " /*+ rkey.GetValue(value)*/ + " (" + rkey.GetValueKind(value) + ")");
+                String valueName = s;
+                if (s.CompareTo("") == 0)
+                    valueName = "(Predeterminado)";
+
+                registro.Write(rkey.Name + "\\" + valueName + ": ");
+
+                RegistryValueKind rvk = rkey.GetValueKind(s);
+                switch (rvk)
+                {
+                    case RegistryValueKind.DWord :
+                        registro.Write("{0} ({1})", (int)rkey.GetValue(s), rvk);
+                        break;
+                    case RegistryValueKind.QWord:
+                        registro.Write("{0} ({1})", (long)rkey.GetValue(s), rvk);
+                        break;
+                    case RegistryValueKind.MultiString:
+                        String[] multistringValue = (String[])rkey.GetValue(s);
+                        for(int i = 0; i < multistringValue.Length; i++)
+                        {
+                            registro.Write("{0} ", multistringValue[i]);
+                        }
+                        registro.Write("({0})", rvk);
+                        break;
+                    case RegistryValueKind.Binary:
+                    case RegistryValueKind.None:
+                        byte[] bytesValue = (byte[])rkey.GetValue(s);
+                        for (int i = 0; i < bytesValue.Length; i++)
+                        {
+                            registro.Write("{0:X2} ", bytesValue[i]);
+                        }
+                        registro.Write("({0})", rvk);
+                        break;
+                    default:
+                        registro.Write("{0} ({1})", rkey.GetValue(s), rvk);
+                        break;
+                }
+                registro.Write("\r\n");
             }
 
             foreach (String s in subkeys)
