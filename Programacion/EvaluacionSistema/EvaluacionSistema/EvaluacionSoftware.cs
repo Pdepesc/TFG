@@ -274,28 +274,26 @@ namespace EvaluacionSistema
             using (StreamWriter registroInaccesible = new StreamWriter(path + "\\RegistrosInaccesibles.txt"))
             //using (StreamWriter registroInaccesible = new StreamWriter(@"C:\Users\Public\RegistrosInaccesibles.txt"))
             {
-                registro.WriteLine(Registry.ClassesRoot.Name);
                 PrintKeys(Registry.ClassesRoot, registro, registroInaccesible);
                 Console.WriteLine("ClassesRoot done");
-                registro.WriteLine(Registry.CurrentConfig.Name);
+                registro.WriteLine("-----------------------------------------------------------------------");
                 PrintKeys(Registry.CurrentConfig, registro, registroInaccesible);
                 Console.WriteLine("CurrentConfig done");
-                registro.WriteLine(Registry.CurrentUser.Name);
+                registro.WriteLine("-----------------------------------------------------------------------");
                 PrintKeys(Registry.CurrentUser, registro, registroInaccesible);
                 Console.WriteLine("CurrentUser done");
-                registro.WriteLine(Registry.LocalMachine.Name);
+                registro.WriteLine("-----------------------------------------------------------------------");
                 PrintKeys(Registry.LocalMachine, registro, registroInaccesible);
                 Console.WriteLine("LocalMachine done");
-                registro.WriteLine(Registry.Users.Name);
+                registro.WriteLine("-----------------------------------------------------------------------");
                 PrintKeys(Registry.Users, registro, registroInaccesible);
                 Console.WriteLine("Users done");
             }
             Console.WriteLine("Reporte finalizado!");
             Console.Read();
         }
-
-        //TODO: tratar IOException de caracteres no unicode (System.Text.EncoderFallbackException)
-        //TODO: revisar de nuevo como se escribe cada tipo de valor
+        
+        //REGISTRO DE WINDOWS
         private static void PrintKeys(RegistryKey rkey, StreamWriter registro, StreamWriter registroInaccesible)
         {
             String[] subkeys = rkey.GetSubKeyNames();
@@ -312,21 +310,21 @@ namespace EvaluacionSistema
 
                 RegistryValueKind rvk = rkey.GetValueKind(s);
 
-                registro.Write("{0}\\{1}, {2}", rkey.Name, valueName, rvk);
+                registro.Write("{0}\\{1} :: {2} :: ", rkey.Name, valueName, rvk);
 
                 switch (rvk)
                 {
                     case RegistryValueKind.DWord :
-                        registro.Write(", {0}", (int)rkey.GetValue(s));
+                        registro.Write("{0}", (int)rkey.GetValue(s));
                         break;
                     case RegistryValueKind.QWord:
-                        registro.Write(", {0}", (long)rkey.GetValue(s));
+                        registro.Write("{0}", (long)rkey.GetValue(s));
                         break;
                     case RegistryValueKind.MultiString:
                         String[] multistringValue = (String[])rkey.GetValue(s);
                         for(int i = 0; i < multistringValue.Length; i++)
                         {
-                            registro.Write(", {0}", multistringValue[i]);
+                            registro.Write("{0}\t", multistringValue[i]);
                         }
                         break;
                     case RegistryValueKind.Binary:
@@ -334,12 +332,12 @@ namespace EvaluacionSistema
                         byte[] bytesValue = (byte[])rkey.GetValue(s);
                         for (int i = 0; i < bytesValue.Length; i++)
                         {
-                            registro.Write(", {0}", bytesValue[i]);          //Decimal
-                            //registro.Write("{0:X2} ", bytesValues[i]);    //Hexadecimal
+                            //registro.Write("{0} ", bytesValue[i]);    //Decimal
+                            registro.Write("{0:X2} ", bytesValue[i]);    //Hexadecimal
                         }
                         break;
                     default:
-                        registro.Write(", {0}", rkey.GetValue(s));
+                        registro.Write("{0}", rkey.GetValue(s));
                         break;
                 }
                 registro.Write("\r\n");
