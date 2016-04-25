@@ -10,6 +10,8 @@ namespace EvaluacionSistema
     {
         static void Main(string[] args)
         {
+            EvaluacionInicial.Evaluacion();
+
             Console.WriteLine("Escoge una opción:");
             Console.WriteLine("1: Hardware - Evaluación (Reporte)");
             Console.WriteLine("2: Hardware - GetAll");

@@ -36,6 +36,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MySql.Data, Version=6.1.6.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
     <Reference Include="OpenHardwareMonitorLib">
       <HintPath>..\..\OpenHardwareMonitorLib.dll</HintPath>
     </Reference>
@@ -50,8 +51,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EvaluacionHardware.cs" />
+    <Compile Include="EvaluacionInicial.cs" />
     <Compile Include="EvaluacionSoftware.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="Properties.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -59,6 +62,7 @@
     <None Include="app.manifest">
       <SubType>Designer</SubType>
     </None>
+    <None Include="Configuracion.properties" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
