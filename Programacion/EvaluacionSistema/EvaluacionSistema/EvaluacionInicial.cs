@@ -16,7 +16,7 @@ namespace EvaluacionSistema
         public static void Evaluacion()
         {
             Properties configuracion = new Properties("Configuracion.properties");
-            string cs = @"server=localhost;userid=root;password=;database=tfg";
+            string cs = @"server=192.168.1.2;userid=paris;password=paris;database=tfg";
             MySqlConnection conn = new MySqlConnection(cs);
 
 
@@ -105,10 +105,10 @@ namespace EvaluacionSistema
                         + ", '" + hardware.Name + "'"
                         + ", '" + sensor.Name + "'"
                         + ", '" + sensor.Identifier + "'"
-                        + ", " + (float)(Math.Truncate((Convert.ToDouble(sensor.Min)) * 100.0) / 100.0)
-                        + ", " + (float)(Math.Truncate((Convert.ToDouble(sensor.Max)) * 100.0) / 100.0)
-                        + ", " + Media(sensor.Values)
-                        + ", " + (float)(Math.Truncate((Convert.ToDouble(sensor.Values.ElementAt<SensorValue>(sensor.Values.Count() - 1).Value)) * 100.0) / 100.0)
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Min)) * 100.0) / 100.0) + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Max)) * 100.0) / 100.0) + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(Media(sensor.Values))) * 100.0) / 100.0) + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Values.ElementAt<SensorValue>(sensor.Values.Count() - 1).Value)) * 100.0) / 100.0) + "'"
                         + "), ";
                 }
             }
@@ -120,7 +120,7 @@ namespace EvaluacionSistema
             float suma = 0;
             foreach (SensorValue valor in valores)
             {
-                suma += (float)(Math.Truncate((Convert.ToDouble(valor.Value)) * 100.0) / 100.0);
+                suma += valor.Value;
             }
             return suma / valores.Count();
         }
