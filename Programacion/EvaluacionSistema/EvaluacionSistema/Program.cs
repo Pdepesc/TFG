@@ -9,32 +9,69 @@ namespace EvaluacionSistema
 {
     class Program
     {
+        public static String host = "192.168.1.10";
+        public static String work_dir = "/var/www/";
+        public static String user_sftp = "pi";
+        public static String pass_sftp = "raspberry";
+        public static int port_ftp = 22;
+
         static void Main(string[] args)
         {
             Properties properties = new Properties("Properties.properties");
             string cs = @"server=192.168.1.10;userid=paris;password=paris;database=tfg";
             MySqlConnection conn = new MySqlConnection(cs);
-            
+
+            Util.GetRegistro();
+
+            Console.Read();
+
             try
             {
-                /*
-                    Prueba de conexion a internet o a la BBDD
-                        - Si funciona bien seguimos con la ejecucion
-                        - Si falla (consultar a borja)
-                */
+                //Prueba de conexion a la BBDD
                 conn.Open();
 
                 //Evaluacion Inicial
                 if (properties.get("TipoEvaluacion").CompareTo("Inicial") == 0)
                 {
-                    if (EvaluacionInicial.Evaluacion(conn, properties))
-                        properties.set("TipoEvaluacion", "Completa");
+                    EvaluacionInicial.Evaluacion(conn, properties);
                     //FIN DE LA EVALUACION INICIAL
                 }
                 //Evaluacion completa y deteccion y solucion de errores
                 else
                 {
+                    /*
 
+
+                    UTILIZAR UNA CLASE INCIDENCIA QUE ALMACENE LOS STRINGS CON EL ERROR HARDWARE Y EL ERROR SOFTWARE? Y SE UTILICE COMO
+                    VALOR DEVUELTO POR LOS METODOS EVALUACIONHARDWARE.EVALUACION Y EVALUACIONSOFTWARE.EVALUACION O YO K SE
+
+
+                    //Realizar comprobaciones para ver que todo funca bien
+                    int errorHardware = 0;
+                    List<List<String>> registrosDefectuosos;
+                    int errorSoftware = 0;
+
+                    EvaluacionHardware.Evaluacion(errorHardware);
+                    //Descargar valores de fabrica de la propia estacion 
+                    //Descargar valores de las estaciones con el mismo modelo
+                    //Hacer comprobaciones
+
+                    registrosDefectuosos = EvaluacionSoftware.EvaluacionRegistro(); return List < List < String >> registrosMalos; (Clave, valor, tipo)
+         
+                         EvaluacionSoftware.EvaluacionContadores(errorSoftware);
+
+                    if (registrosDefectuosos.Count() > 0)
+                        //Comprobar si hay actualizacion del Registro (nueva version) -- Quizas esto haya que comprobarlo antes de evaluar
+                        //Actualizar fichero con el registro bueno
+                        //Actualizar registros defectuosos con los valores buenos
+                        //Enviar informe con los resultados (registros modificados y version del registro a la que se ha actualizado)
+
+                        if (errorHardware > 0)
+                            //Enviar informe de que es lo que esta fuera de los valores normales
+
+                            if (errorSoftware > 0)
+                    //Enviar informe de los errores encontrados -- Para esto tendria que esperar a la contestacion de la empresa
+                    */
                     //FIN DE LA EVALUACION COMPLETA
                 }
 
@@ -48,48 +85,8 @@ namespace EvaluacionSistema
             }
 
             conn.Close();
-            
 
-            /*
-
-            if(fichero.getProperty('EvaluacionInicial') == 0){
-                EvaluacionInicial.Evaluacion();
-                //Comprobar versión del Registro y comprobar que todos los registros están bien configurados
-                    //Si el registro está mal, arreglarlo
-                //Hacer evaluacion inicial del software (PerformanceCounters) o no -- Depende de lo que digan en la empresa
-                fichero.setProperty('EvaluacionInicial', '1');
-            }
-            else {
-                //Realizar comprobaciones para ver que todo funca bien
-                int errorHardware = 0;
-                List<List<String>> registrosDefectuosos;
-                int errorSoftware = 0;
-
-                EvaluacionHardware.Evaluacion(errorHardware);
-                    //Descargar valores de fabrica de la propia estacion 
-                    //Descargar valores de las estaciones con el mismo modelo
-                    //Hacer comprobaciones
-
-                registrosDefectuosos = EvaluacionSoftware.EvaluacionRegistro(); return List<List<String>> registrosMalos; (Clave, valor, tipo)
-
-                EvaluacionSoftware.EvaluacionContadores(errorSoftware);
-
-                if(registrosDefectuosos.Count() > 0)
-                    //Comprobar si hay actualizacion del Registro (nueva version) -- Quizas esto haya que comprobarlo antes de evaluar
-                    //Actualizar fichero con el registro bueno
-                    //Actualizar registros defectuosos con los valores buenos
-                    //Enviar informe con los resultados (registros modificados y version del registro a la que se ha actualizado)
-
-                if(errorHardware > 0)
-                    //Enviar informe de que es lo que esta fuera de los valores normales
-
-                if(errorSoftware > 0)
-                    //Enviar informe de los errores encontrados -- Para esto tendria que esperar a la contestacion de la empresa
-
-            }
-
-
-            */
+            Console.Read();
             
             Console.WriteLine("Escoge una opción:");
             Console.WriteLine("1: Hardware - Evaluación (Reporte)");
@@ -122,6 +119,45 @@ namespace EvaluacionSistema
                 default: break;
             }
             Console.Read();
+        }
+
+        public static void PruebaFTP()
+        {
+
+            /*
+            
+            const int port = 22;
+            const string host = "domainna.me";
+            const string username = "chucknorris";
+            const string password = "norrischuck";
+            const string workingdirectory = "/highway/hell";
+            const string uploadfile = @"c:yourfilegoeshere.txt";
+
+            Console.WriteLine("Creating client and connecting");
+            using (var client = new SftpClient(host, port, username, password))
+            {
+                client.Connect();
+                Console.WriteLine("Connected to {0}", host);
+
+                client.ChangeDirectory(workingdirectory);
+                Console.WriteLine("Changed directory to {0}", workingdirectory);
+
+                var listDirectory = client.ListDirectory(workingdirectory);
+                Console.WriteLine("Listing directory:");
+                foreach (var fi in listDirectory)
+                {
+                    Console.WriteLine(" - " + fi.Name);
+                }
+
+                using (var fileStream = new FileStream(uploadfile, FileMode.Open))
+                {
+                    Console.WriteLine("Uploading {0} ({1:N0} bytes)",
+                                        uploadfile, fileStream.Length);
+                    client.BufferSize = 4 * 1024; // bypass Payload error large files
+                    client.UploadFile(fileStream, Path.GetFileName(uploadfile));
+                }
+            }
+            */
         }
     }
 }

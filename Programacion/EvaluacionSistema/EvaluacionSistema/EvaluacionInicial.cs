@@ -14,9 +14,10 @@ namespace EvaluacionSistema
     {
         private static Computer miPc = new Computer() { CPUEnabled = true, FanControllerEnabled = true, GPUEnabled = true, HDDEnabled = true, MainboardEnabled = true, RAMEnabled = true };
 
-        public static bool Evaluacion(MySqlConnection conn, Properties properties)
+        public static void Evaluacion(MySqlConnection conn, Properties properties)
         {
-            return EvaluacionHardware(conn, properties) && EvaluacionSoftware(conn, properties);
+            if(EvaluacionHardware(conn, properties) && EvaluacionSoftware(conn, properties))
+                properties.set("TipoEvaluacion", "Completa");
         }
 
         public static bool EvaluacionHardware(MySqlConnection conn, Properties properties)
@@ -88,7 +89,7 @@ namespace EvaluacionSistema
             if(versionLocal != versionBD)
             {
                 //Actualizar por FTP el fichero del registro local
-                //FTP.Download(url, Registro.xml);      Esto sería así si hago una clase FTPManager o algo del estilo
+                ActualizarRegistroSFTP(url);
 
                 //Actualizar version en el fichero de props
                 properties.set("VersionRegistro", versionBD.ToString());
@@ -156,24 +157,13 @@ namespace EvaluacionSistema
             }
             return suma / valores.Count();
         }
-        
-        public static void PruebaFTP()
-        {
-            /*
-            PUEDE QUE SEA MEJOR HACER UNA CLASE FTPMANAGER O ALGO ASI,
-            QUE TENGA LAS CONSTANTES DE CONEXION HOST, USERNAME, PASSWORD, PORT
-            Y QUE TENGA DOS METODOS
-                - DOWNLOAD(REMOTEFILENAME, LOCALDESTINATIONFILENAME)
-                - UPLOAD(LOCALFILENAME, REMOTEDESTINATIONFILENAME)
-            */
-            String Host = "192.168.1.10";
-            int Port = 22;
-            String RemoteFileName = "/var/www/ejemplo.txt";
-            String LocalDestinationFilename = "ejemplo.txt";
-            String Username = "pi";
-            String Password = "raspberry";
 
-            using (var sftp = new SftpClient(Host, Port, Username, Password))
+        private static void ActualizarRegistroSFTP(String url)
+        {
+            String RemoteFileName = Program.work_dir + url;
+            String LocalDestinationFilename = "Registro.xml";
+
+            using (var sftp = new SftpClient(Program.host, Program.port_ftp, Program.user_sftp, Program.pass_sftp))
             {
                 sftp.Connect();
 
@@ -184,40 +174,6 @@ namespace EvaluacionSistema
 
                 sftp.Disconnect();
             }
-            /*
-            
-            const int port = 22;
-            const string host = "domainna.me";
-            const string username = "chucknorris";
-            const string password = "norrischuck";
-            const string workingdirectory = "/highway/hell";
-            const string uploadfile = @"c:yourfilegoeshere.txt";
-
-            Console.WriteLine("Creating client and connecting");
-            using (var client = new SftpClient(host, port, username, password))
-            {
-                client.Connect();
-                Console.WriteLine("Connected to {0}", host);
-
-                client.ChangeDirectory(workingdirectory);
-                Console.WriteLine("Changed directory to {0}", workingdirectory);
-
-                var listDirectory = client.ListDirectory(workingdirectory);
-                Console.WriteLine("Listing directory:");
-                foreach (var fi in listDirectory)
-                {
-                    Console.WriteLine(" - " + fi.Name);
-                }
-
-                using (var fileStream = new FileStream(uploadfile, FileMode.Open))
-                {
-                    Console.WriteLine("Uploading {0} ({1:N0} bytes)",
-                                        uploadfile, fileStream.Length);
-                    client.BufferSize = 4 * 1024; // bypass Payload error large files
-                    client.UploadFile(fileStream, Path.GetFileName(uploadfile));
-                }
-            }
-            */
         }
     }
 }
