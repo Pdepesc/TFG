@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MySql.Data.MySqlClient;
 
 namespace EvaluacionSistema
 {
@@ -10,13 +11,49 @@ namespace EvaluacionSistema
     {
         static void Main(string[] args)
         {
+            Properties properties = new Properties("Properties.properties");
+            string cs = @"server=192.168.1.10;userid=paris;password=paris;database=tfg";
+            MySqlConnection conn = new MySqlConnection(cs);
+            
+            try
+            {
+                /*
+                    Prueba de conexion a internet o a la BBDD
+                        - Si funciona bien seguimos con la ejecucion
+                        - Si falla (consultar a borja)
+                */
+                conn.Open();
+
+                //Evaluacion Inicial
+                if (properties.get("TipoEvaluacion").CompareTo("Inicial") == 0)
+                {
+                    if (EvaluacionInicial.Evaluacion(conn, properties))
+                        properties.set("TipoEvaluacion", "Completa");
+                    //FIN DE LA EVALUACION INICIAL
+                }
+                //Evaluacion completa y deteccion y solucion de errores
+                else
+                {
+
+                    //FIN DE LA EVALUACION COMPLETA
+                }
+
+            } catch (MySqlException ex)
+            {
+                //Ejecutar script para intentar arreglar la conexion
+                //Reejecutar el programa una vez arreglado el fallo
+                //Quitar el mensaje de abajo o cambiarlo a un log o yo k se
+                Console.WriteLine("Fallo en la conexion a la BBDD");
+                Console.WriteLine("Error: {0}", ex.ToString());
+            }
+
+            conn.Close();
+            
 
             /*
 
             if(fichero.getProperty('EvaluacionInicial') == 0){
                 EvaluacionInicial.Evaluacion();
-                //Añadir la estacion a la BBDD (obtener NombreEstacion, Modelo, VersionRegistro por teclado o del fichero de propiedades)
-                //Añadir los componentes Hardware a la BBDD con sus respectivos valores (Minimo, Maximo, Media, Ultimo)
                 //Comprobar versión del Registro y comprobar que todos los registros están bien configurados
                     //Si el registro está mal, arreglarlo
                 //Hacer evaluacion inicial del software (PerformanceCounters) o no -- Depende de lo que digan en la empresa
@@ -54,9 +91,6 @@ namespace EvaluacionSistema
 
             */
             
-
-            EvaluacionInicial.Evaluacion();
-
             Console.WriteLine("Escoge una opción:");
             Console.WriteLine("1: Hardware - Evaluación (Reporte)");
             Console.WriteLine("2: Hardware - GetAll");

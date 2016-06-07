@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using MySql.Data.MySqlClient;
 
 using OpenHardwareMonitor.Hardware;
+using Renci.SshNet;
+using System.IO;
 
 namespace EvaluacionSistema
 {
@@ -13,68 +14,99 @@ namespace EvaluacionSistema
     {
         private static Computer miPc = new Computer() { CPUEnabled = true, FanControllerEnabled = true, GPUEnabled = true, HDDEnabled = true, MainboardEnabled = true, RAMEnabled = true };
 
-        public static void Evaluacion()
+        public static bool Evaluacion(MySqlConnection conn, Properties properties)
         {
-            Properties properties = new Properties("Configuracion.properties");
-            string cs = @"server=192.168.1.10;userid=paris;password=paris;database=tfg";
-            MySqlConnection conn = new MySqlConnection(cs);
+            return EvaluacionHardware(conn, properties) && EvaluacionSoftware(conn, properties);
+        }
 
+        public static bool EvaluacionHardware(MySqlConnection conn, Properties properties)
+        {
+            MySqlTransaction sqltransaction = conn.BeginTransaction();
 
-            if (properties.get("EvaluacionInicial").CompareTo("0") == 0) {
-                try
-                {
-                    //Abrir conexion con MySQL
-                    conn.Open();
-                    MySqlTransaction sqltransaction = conn.BeginTransaction();
+            try
+            {
+                //Añadir esta estación a la BBDD y obtener su ID
+                string sql = "INSERT INTO estacion(Empresa, Modelo, VersionRegistro) VALUES (@empresa, @modelo, @version)";
 
-                    try {
-                        //Añadir esta estación a la BBDD y obtener su ID
-                        string sql = "INSERT INTO estacion(Estacion, Modelo, VersionRegistro) VALUES (@estacion, @modelo, @version)";
+                MySqlCommand cmd = new MySqlCommand(sql, conn);
+                cmd.Prepare();
 
-                        MySqlCommand cmd = new MySqlCommand(sql, conn);
-                        cmd.Prepare();
+                cmd.Parameters.AddWithValue("@empresa", properties.get("Empresa"));
+                cmd.Parameters.AddWithValue("@modelo", properties.get("Modelo"));
+                cmd.Parameters.AddWithValue("@version", properties.get("VersionRegistro"));
+                cmd.ExecuteNonQuery();
 
-                        cmd.Parameters.AddWithValue("@estacion", properties.get("Estacion"));
-                        cmd.Parameters.AddWithValue("@modelo", properties.get("Modelo"));
-                        cmd.Parameters.AddWithValue("@version", properties.get("VersionRegistro"));
-                        cmd.ExecuteNonQuery();
+                long id = cmd.LastInsertedId;
+                properties.set("IdEstacion", id.ToString());
+                Console.WriteLine(id);
 
-                        long id = cmd.LastInsertedId;
-                        Console.WriteLine(id);
+                //Actualizar componentes hardware 100 veces
+                Console.WriteLine("Actualizando componentes hardware...");
+                ActualizarHardware();
+                Console.WriteLine("Actualizacion finalizada!");
 
-                        //Actualizar componentes hardware 100 veces
-                        Console.WriteLine("Actualizando componentes hardware...");
-                        ActualizarHardware();
-                        Console.WriteLine("Actualizacion finalizada!");
+                //Leer componenetes Hardware y guardarlos en la BBDD
+                sql = LeerCompoenentes(id, miPc.Hardware);
+                Console.WriteLine("Ejecutar la siguiente consulta: \r\n" + sql);
+                Console.Read();
+                cmd.CommandText = sql;
+                cmd.ExecuteNonQuery();
 
-                        //Leer componenetes Hardware y guardarlos en la BBDD
-                        sql = LeerCompoenentes(id, miPc.Hardware);
-                        Console.WriteLine("Ejecutar la siguiente consulta: \r\n" + sql);
-                        Console.Read();
-                        cmd.CommandText = sql;
-                        cmd.ExecuteNonQuery();
+                sqltransaction.Commit();
 
-                        sqltransaction.Commit();
+                Console.WriteLine("Insercion en la BBDD realizada!");
 
-                        Console.WriteLine("Insercion en la BBDD realizada!");
-
-                        //Modificar fichero de propiedades
-                        properties.set("EvaluacionInicial", 1);
-                        properties.Save();
-                    }
-                    catch (MySqlException ex)
-                    {
-                        sqltransaction.Rollback();
-                        Console.WriteLine("Error: {0}", ex.ToString());
-                    }
-                }
-                catch (MySqlException ex)
-                {
-                    Console.WriteLine("Error: {0}", ex.ToString());
-                }
+                return true;                    
             }
+            catch (MySqlException ex)
+            {
+                sqltransaction.Rollback();
+                Console.WriteLine("Error: {0}", ex.ToString());
+                return false;
+            }
+        }
+        
+        public static bool EvaluacionSoftware(MySqlConnection conn, Properties properties)
+        {
+            //Get version local
+            int versionLocal = int.Parse(properties.get("VersionRegistro"));
 
-            conn.Close();
+            //Get version BBDD
+            string query = "SELECT Version, UrlDescarga FROM Registro WHERE Modelo = @modelo";
+            MySqlCommand cmd = new MySqlCommand(query, conn);
+
+            cmd.Parameters.AddWithValue("@modelo", properties.get("Modelo"));
+
+            MySqlDataReader rdr = cmd.ExecuteReader();
+
+            int versionBD = rdr.GetInt32("Version");
+            string url = rdr.GetString("UrlDescarga");
+            
+            rdr.Close();
+
+            //Comparar versiones
+            if(versionLocal != versionBD)
+            {
+                //Actualizar por FTP el fichero del registro local
+                //FTP.Download(url, Registro.xml);      Esto sería así si hago una clase FTPManager o algo del estilo
+
+                //Actualizar version en el fichero de props
+                properties.set("VersionRegistro", versionBD.ToString());
+
+                //Actualziar version BBDD de la estacion local
+                query = "UPDATE Estacion SET VersionRegistro = @version WHERE ID = @id";
+                cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@version", versionBD);
+                cmd.Parameters.AddWithValue("@id", properties.get("IdEstacion"));
+                cmd.ExecuteNonQuery();
+            }
+            
+            //Comprobar registro local con el del fichero
+                //Abrir fichero con el registro
+                //Comprobar registro s uno a uno...
+            //Si [registros_modificados] == 0 -> return true
+            //Sino -> Comprobar de nuevo hasta que se cumpla el primer Si (hacer el metodo recursivo)
+            return false;
         }
 
         private static void ActualizarHardware()
@@ -96,15 +128,15 @@ namespace EvaluacionSistema
         
         private static string LeerCompoenentes(long id, IHardware[] hardwareCollection)
         {
-            string sql = "INSERT INTO hardware(IDEstacion, Componente, Sensor, Identificador, Minimo, Maximo, Media, Ultimo) VALUES ";
+            string sql = "INSERT INTO hardware(ID_Estacion, Identificador, Componente, Sensor, Minimo, Maximo, Media, Ultimo) VALUES ";
             foreach (IHardware hardware in hardwareCollection)
             {
                 foreach (ISensor sensor in hardware.Sensors)
                 {
                     sql += "(" + id
+                        + ", '" + sensor.Identifier + "'"
                         + ", '" + hardware.Name + "'"
                         + ", '" + sensor.Name + "'"
-                        + ", '" + sensor.Identifier + "'"
                         + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Min)) * 100.0) / 100.0) + "'"
                         + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Max)) * 100.0) / 100.0) + "'"
                         + ", '" + (float)(Math.Truncate((Convert.ToDouble(Media(sensor.Values))) * 100.0) / 100.0) + "'"
@@ -123,6 +155,69 @@ namespace EvaluacionSistema
                 suma += valor.Value;
             }
             return suma / valores.Count();
+        }
+        
+        public static void PruebaFTP()
+        {
+            /*
+            PUEDE QUE SEA MEJOR HACER UNA CLASE FTPMANAGER O ALGO ASI,
+            QUE TENGA LAS CONSTANTES DE CONEXION HOST, USERNAME, PASSWORD, PORT
+            Y QUE TENGA DOS METODOS
+                - DOWNLOAD(REMOTEFILENAME, LOCALDESTINATIONFILENAME)
+                - UPLOAD(LOCALFILENAME, REMOTEDESTINATIONFILENAME)
+            */
+            String Host = "192.168.1.10";
+            int Port = 22;
+            String RemoteFileName = "/var/www/ejemplo.txt";
+            String LocalDestinationFilename = "ejemplo.txt";
+            String Username = "pi";
+            String Password = "raspberry";
+
+            using (var sftp = new SftpClient(Host, Port, Username, Password))
+            {
+                sftp.Connect();
+
+                using (var file = File.OpenWrite(LocalDestinationFilename))
+                {
+                    sftp.DownloadFile(RemoteFileName, file);
+                }
+
+                sftp.Disconnect();
+            }
+            /*
+            
+            const int port = 22;
+            const string host = "domainna.me";
+            const string username = "chucknorris";
+            const string password = "norrischuck";
+            const string workingdirectory = "/highway/hell";
+            const string uploadfile = @"c:yourfilegoeshere.txt";
+
+            Console.WriteLine("Creating client and connecting");
+            using (var client = new SftpClient(host, port, username, password))
+            {
+                client.Connect();
+                Console.WriteLine("Connected to {0}", host);
+
+                client.ChangeDirectory(workingdirectory);
+                Console.WriteLine("Changed directory to {0}", workingdirectory);
+
+                var listDirectory = client.ListDirectory(workingdirectory);
+                Console.WriteLine("Listing directory:");
+                foreach (var fi in listDirectory)
+                {
+                    Console.WriteLine(" - " + fi.Name);
+                }
+
+                using (var fileStream = new FileStream(uploadfile, FileMode.Open))
+                {
+                    Console.WriteLine("Uploading {0} ({1:N0} bytes)",
+                                        uploadfile, fileStream.Length);
+                    client.BufferSize = 4 * 1024; // bypass Payload error large files
+                    client.UploadFile(fileStream, Path.GetFileName(uploadfile));
+                }
+            }
+            */
         }
     }
 }
