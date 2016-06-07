@@ -15,12 +15,12 @@ namespace EvaluacionSistema
 
         public static void Evaluacion()
         {
-            Properties configuracion = new Properties("Configuracion.properties");
-            string cs = @"server=192.168.1.2;userid=paris;password=paris;database=tfg";
+            Properties properties = new Properties("Configuracion.properties");
+            string cs = @"server=192.168.1.10;userid=paris;password=paris;database=tfg";
             MySqlConnection conn = new MySqlConnection(cs);
 
 
-            if (configuracion.get("EvaluacionInicial").CompareTo("0") == 0) {
+            if (properties.get("EvaluacionInicial").CompareTo("0") == 0) {
                 try
                 {
                     //Abrir conexion con MySQL
@@ -34,9 +34,9 @@ namespace EvaluacionSistema
                         MySqlCommand cmd = new MySqlCommand(sql, conn);
                         cmd.Prepare();
 
-                        cmd.Parameters.AddWithValue("@estacion", configuracion.get("Estacion"));
-                        cmd.Parameters.AddWithValue("@modelo", configuracion.get("Modelo"));
-                        cmd.Parameters.AddWithValue("@version", configuracion.get("VersionRegistro"));
+                        cmd.Parameters.AddWithValue("@estacion", properties.get("Estacion"));
+                        cmd.Parameters.AddWithValue("@modelo", properties.get("Modelo"));
+                        cmd.Parameters.AddWithValue("@version", properties.get("VersionRegistro"));
                         cmd.ExecuteNonQuery();
 
                         long id = cmd.LastInsertedId;
@@ -59,8 +59,8 @@ namespace EvaluacionSistema
                         Console.WriteLine("Insercion en la BBDD realizada!");
 
                         //Modificar fichero de propiedades
-                        configuracion.set("EvaluacionInicial", 1);
-                        configuracion.Save();
+                        properties.set("EvaluacionInicial", 1);
+                        properties.Save();
                     }
                     catch (MySqlException ex)
                     {
