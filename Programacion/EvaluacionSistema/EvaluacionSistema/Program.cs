@@ -17,35 +17,43 @@ namespace EvaluacionSistema
 
         static void Main(string[] args)
         {
+
+            Console.WriteLine("Iniciando programa...");
+
             Properties properties = new Properties("Properties.properties");
-            string cs = @"server=192.168.1.10;userid=paris;password=paris;database=tfg";
+            string cs = @"server=192.168.1.10;userid=paris;password=paris;database=TFG";
             MySqlConnection conn = new MySqlConnection(cs);
 
-            Util.GetRegistro();
-
-            Console.Read();
-
+            Console.WriteLine();
+            
             try
             {
+                Console.WriteLine("Probando conexion con la BBDD...");
+
                 //Prueba de conexion a la BBDD
                 conn.Open();
 
-                //Evaluacion Inicial
+                Console.WriteLine("¡Conexion a la BBDD correcta!");
+                
                 if (properties.get("TipoEvaluacion").CompareTo("Inicial") == 0)
                 {
+                    #region EvaluacionInicial
+                    Console.WriteLine("\tEvaluacion inicial...");
+
                     EvaluacionInicial.Evaluacion(conn, properties);
-                    //FIN DE LA EVALUACION INICIAL
+
+                    Console.WriteLine("\tFin de la evaluacion inicial!");
+                    #endregion
                 }
                 //Evaluacion completa y deteccion y solucion de errores
                 else
                 {
+                    #region EvaluacionCompleta
                     /*
-
 
                     UTILIZAR UNA CLASE INCIDENCIA QUE ALMACENE LOS STRINGS CON EL ERROR HARDWARE Y EL ERROR SOFTWARE? Y SE UTILICE COMO
                     VALOR DEVUELTO POR LOS METODOS EVALUACIONHARDWARE.EVALUACION Y EVALUACIONSOFTWARE.EVALUACION O YO K SE
-
-
+                    
                     //Realizar comprobaciones para ver que todo funca bien
                     int errorHardware = 0;
                     List<List<String>> registrosDefectuosos;
@@ -73,6 +81,11 @@ namespace EvaluacionSistema
                     //Enviar informe de los errores encontrados -- Para esto tendria que esperar a la contestacion de la empresa
                     */
                     //FIN DE LA EVALUACION COMPLETA
+                    #endregion
+
+                    #region PostEvaluacion
+
+                    #endregion
                 }
 
             } catch (MySqlException ex)
@@ -80,12 +93,12 @@ namespace EvaluacionSistema
                 //Ejecutar script para intentar arreglar la conexion
                 //Reejecutar el programa una vez arreglado el fallo
                 //Quitar el mensaje de abajo o cambiarlo a un log o yo k se
-                Console.WriteLine("Fallo en la conexion a la BBDD");
+                Console.WriteLine("¡Conexion a la BBDD fallida!");
                 Console.WriteLine("Error: {0}", ex.ToString());
             }
 
             conn.Close();
-
+            /*
             Console.Read();
             
             Console.WriteLine("Escoge una opción:");
@@ -117,7 +130,7 @@ namespace EvaluacionSistema
                     EvaluacionSoftware.GetRegistro(); //En construccion
                     break;
                 default: break;
-            }
+            }*/
             Console.Read();
         }
 

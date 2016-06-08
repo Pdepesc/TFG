@@ -16,18 +16,29 @@ namespace EvaluacionSistema
 
         public static void Evaluacion(MySqlConnection conn, Properties properties)
         {
-            if(EvaluacionHardware(conn, properties) && EvaluacionSoftware(conn, properties))
+            MySqlTransaction sqltransaction = conn.BeginTransaction();
+
+            if (EvaluacionHardware(conn, properties) && EvaluacionSoftware(conn, properties))
+            {
+                sqltransaction.Commit();
                 properties.set("TipoEvaluacion", "Completa");
+                properties.Save();
+            }
+            else
+            {
+                sqltransaction.Rollback();
+            }
+                
         }
 
         public static bool EvaluacionHardware(MySqlConnection conn, Properties properties)
         {
-            MySqlTransaction sqltransaction = conn.BeginTransaction();
-
             try
             {
+                Console.WriteLine("Iniciando evaluacion inicial de Hardware...");
+
                 //Añadir esta estación a la BBDD y obtener su ID
-                string sql = "INSERT INTO estacion(Empresa, Modelo, VersionRegistro) VALUES (@empresa, @modelo, @version)";
+                string sql = "INSERT INTO Estacion(Empresa, Modelo, VersionRegistro) VALUES (@empresa, @modelo, @version)";
 
                 MySqlCommand cmd = new MySqlCommand(sql, conn);
                 cmd.Prepare();
@@ -39,29 +50,23 @@ namespace EvaluacionSistema
 
                 long id = cmd.LastInsertedId;
                 properties.set("IdEstacion", id.ToString());
-                Console.WriteLine(id);
 
                 //Actualizar componentes hardware 100 veces
                 Console.WriteLine("Actualizando componentes hardware...");
                 ActualizarHardware();
-                Console.WriteLine("Actualizacion finalizada!");
+                Console.WriteLine("\tComponentes actualizados!");
 
                 //Leer componenetes Hardware y guardarlos en la BBDD
                 sql = LeerCompoenentes(id, miPc.Hardware);
-                Console.WriteLine("Ejecutar la siguiente consulta: \r\n" + sql);
-                Console.Read();
                 cmd.CommandText = sql;
                 cmd.ExecuteNonQuery();
 
-                sqltransaction.Commit();
-
-                Console.WriteLine("Insercion en la BBDD realizada!");
+                Console.WriteLine("Evaluacion inicial de Hardware finalizada!");
 
                 return true;                    
             }
             catch (MySqlException ex)
             {
-                sqltransaction.Rollback();
                 Console.WriteLine("Error: {0}", ex.ToString());
                 return false;
             }
@@ -69,8 +74,14 @@ namespace EvaluacionSistema
         
         public static bool EvaluacionSoftware(MySqlConnection conn, Properties properties)
         {
+            Console.WriteLine("Iniciando evaluacion inicial del Registro...");
+
+            Console.WriteLine("Comprobando version del registro...");
+
             //Get version local
             int versionLocal = int.Parse(properties.get("VersionRegistro"));
+
+            Console.WriteLine("Version local: " + versionLocal);
 
             //Get version BBDD
             string query = "SELECT Version, UrlDescarga FROM Registro WHERE Modelo = @modelo";
@@ -80,14 +91,20 @@ namespace EvaluacionSistema
 
             MySqlDataReader rdr = cmd.ExecuteReader();
 
+            rdr.Read();
+
             int versionBD = rdr.GetInt32("Version");
             string url = rdr.GetString("UrlDescarga");
             
             rdr.Close();
 
+            Console.WriteLine("Version BBDD: " + versionBD);
+
             //Comparar versiones
-            if(versionLocal != versionBD)
+            if (versionLocal != versionBD)
             {
+                Console.WriteLine("Actualizando el fichero del registro...");
+
                 //Actualizar por FTP el fichero del registro local
                 ActualizarRegistroSFTP(url);
 
@@ -97,17 +114,21 @@ namespace EvaluacionSistema
                 //Actualziar version BBDD de la estacion local
                 query = "UPDATE Estacion SET VersionRegistro = @version WHERE ID = @id";
                 cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@version", versionBD);
+                cmd.Parameters.AddWithValue("@version", versionBD.ToString());
                 cmd.Parameters.AddWithValue("@id", properties.get("IdEstacion"));
                 cmd.ExecuteNonQuery();
+
+                Console.WriteLine("Registro actualizado!");
             }
-            
+
             //Comprobar registro local con el del fichero
-                //Abrir fichero con el registro
-                //Comprobar registro s uno a uno...
+            //Abrir fichero con el registro
+            //Comprobar registro s uno a uno...
             //Si [registros_modificados] == 0 -> return true
             //Sino -> Comprobar de nuevo hasta que se cumpla el primer Si (hacer el metodo recursivo)
-            return false;
+
+            Console.WriteLine("Evaluacion inicial del Registro finalizada!");
+            return true;
         }
 
         private static void ActualizarHardware()
@@ -129,7 +150,7 @@ namespace EvaluacionSistema
         
         private static string LeerCompoenentes(long id, IHardware[] hardwareCollection)
         {
-            string sql = "INSERT INTO hardware(ID_Estacion, Identificador, Componente, Sensor, Minimo, Maximo, Media, Ultimo) VALUES ";
+            string sql = "INSERT INTO Hardware(ID_Estacion, Identificador, Componente, Sensor, Minimo, Maximo, Media, Ultimo) VALUES ";
             foreach (IHardware hardware in hardwareCollection)
             {
                 foreach (ISensor sensor in hardware.Sensors)

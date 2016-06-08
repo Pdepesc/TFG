@@ -12,7 +12,6 @@ namespace EvaluacionSistema
 {
     class Util
     {
-
         public static void GetRegistro()
         {
             XElement registro = new XElement("registro");
@@ -21,16 +20,12 @@ namespace EvaluacionSistema
             
             PrintKeys(Registry.ClassesRoot, registro);
             Console.WriteLine("ClassesRoot done");
-            //Console.Read();
             PrintKeys(Registry.CurrentConfig, registro);
             Console.WriteLine("CurrentConfig done");
-            //Console.Read();
             PrintKeys(Registry.CurrentUser, registro);
             Console.WriteLine("CurrentUser done");
-            //Console.Read();
             PrintKeys(Registry.LocalMachine, registro);
             Console.WriteLine("LocalMachine done");
-            //Console.Read();
             PrintKeys(Registry.Users, registro);
             Console.WriteLine("Users done");
             
@@ -108,12 +103,9 @@ namespace EvaluacionSistema
                 Console.WriteLine("Fallo al leer las subclaves de " + rkey.Name);
             }
             
-
             parent.Add(key);
         }
-
-
-
+        
         #region Crear XML 
         public static void crear_XML()
         {
@@ -150,34 +142,7 @@ namespace EvaluacionSistema
                             select nombre.Element("Nombre").Value;
         }
         #endregion
-
-        #region Agregar Nodo
-        private void addNode(string idEmpleado, string nombre, string edad)
-        {
-            XDocument miXML = XDocument.Load(@"C:\Prueba\MiDoc.xml");
-            miXML.Root.Add(
-                new XElement("Empleado",
-                    new XAttribute("Id_Empleado", idEmpleado),
-                    new XElement("Nombre", nombre),
-                    new XElement("Edad", edad))
-                    );
-            miXML.Save(@"C:\Prueba\MiDoc.xml");
-        }
-        #endregion
-
-        #region Eliminar Nodo
-        private void dropNode(string idEmpleado)
-        {
-            XDocument miXML = XDocument.Load(@"C:\Prueba\MiDoc.xml");
-
-            var consul = from persona in miXML.Elements("Empleados").Elements("Empleado")
-                         where persona.Attribute("Id_Empleado").Value == idEmpleado
-                         select persona;
-            consul.ToList().ForEach(x => x.Remove());
-            miXML.Save("MiDoc.xml");
-        }
-        #endregion
-
+        
         /// <summary>
         /// Remove illegal XML characters from a string.
         /// </summary>
