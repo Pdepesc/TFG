@@ -12,12 +12,9 @@ namespace EvaluacionSistema
 {
     class Util
     {
-        //REGISTRO DE WINDOWS
+
         public static void GetRegistro()
         {
-            //Falla por alguna cadena corrupta o con caracteres no validos
-            //DEBO SANEAR LA ENTRADA (LOS VALORES) ANTES DE GUARDARLOS EN ALGUN ELEMENTO
-            //Probar un metodo 'Normalize' de ToString creo o algo asi
             XElement registro = new XElement("registro");
 
             Console.WriteLine("Iniciando reporte del registro...");
@@ -36,14 +33,7 @@ namespace EvaluacionSistema
             //Console.Read();
             PrintKeys(Registry.Users, registro);
             Console.WriteLine("Users done");
-
-            /*
-            string xml = SanitizeXmlString(registro.ToString());
-
-            Console.Write(xml);*/
-
-            //SANEAR LA ENTRADA ANTES DE CONSTRUIR EL ELEMENTO
-
+            
             XDocument miXML = new XDocument(new XDeclaration("1.0", "utf-8", "yes"),
                 registro);
             miXML.Save("Registro.xml");
@@ -51,36 +41,35 @@ namespace EvaluacionSistema
             Console.WriteLine("Reporte finalizado!");
             Console.Read();
         }
-
-        //REGISTRO DE WINDOWS
+        
         private static void PrintKeys(RegistryKey rkey, XElement parent)
         {
+            int index = rkey.Name.LastIndexOf("\\");
             XElement key = new XElement("k",
-                new XAttribute("name", rkey.Name));
+                new XAttribute("name", (index < 0)? rkey.Name : rkey.Name.Substring(index + 1)));
 
             String[] valueNames = rkey.GetValueNames();
 
             foreach (String s in valueNames)
             {
-                /*
+                
                 XElement value = new XElement("v");
-                value.SetAttributeValue("name", s);
+                value.SetAttributeValue("name", (s.CompareTo("") == 0)? "(Predeterminado)" : SanitizeXmlString(s));
                 
                 RegistryValueKind rvk = rkey.GetValueKind(s);
                 switch (rvk)
                 {
+                    //FUNCIONA
                     case RegistryValueKind.DWord:
-                        value.SetAttributeValue("value", (int)rkey.GetValue(s));
-                        break;
                     case RegistryValueKind.QWord:
-                        value.SetAttributeValue("value", (long)rkey.GetValue(s));
+                        value.SetAttributeValue("value", rkey.GetValue(s));
                         break;
                     case RegistryValueKind.MultiString:
                         String[] multistringValue = (String[])rkey.GetValue(s);
                         String valores = "";
                         for (int i = 0; i < multistringValue.Length; i++)
                         {
-                            valores += multistringValue[i];
+                            valores += multistringValue[i] + "\\0";
                         }
                         value.SetAttributeValue("value", valores);
                         break;
@@ -91,7 +80,7 @@ namespace EvaluacionSistema
                         for (int i = 0; i < bytesValue.Length; i++)
                         {
                             //registro.Write("{0} ", bytesValue[i]);    //Decimal
-                            bytes += bytesValue[i].ToString();    //Hexadecimal
+                            bytes += bytesValue[i] + " ";    //Hexadecimal
                         }
                         value.SetAttributeValue("value", bytes);
                         break;
@@ -100,11 +89,6 @@ namespace EvaluacionSistema
                         break;
                 }
 
-                value.SetAttributeValue("type", rkey.GetValueKind(s));
-                */
-                XElement value = new XElement("v");
-                value.SetAttributeValue("name", s);
-                value.SetAttributeValue("value", rkey.GetValue(s));
                 value.SetAttributeValue("type", rkey.GetValueKind(s));
                 
                 key.Add(value);
