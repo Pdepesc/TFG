@@ -59,31 +59,23 @@ namespace EvaluacionSistema
                 RegistryValueKind rvk = rkey.GetValueKind(s);
                 switch (rvk)
                 {
-                    //FUNCIONA
-                    case RegistryValueKind.DWord:
-                    case RegistryValueKind.QWord:
-                        value.SetAttributeValue("value", rkey.GetValue(s));
-                        break;
                     case RegistryValueKind.MultiString:
-                        String[] multistringValue = (String[])rkey.GetValue(s);
-                        String valores = "";
-                        for (int i = 0; i < multistringValue.Length; i++)
-                        {
-                            valores += multistringValue[i] + "\\0";
-                        }
-                        value.SetAttributeValue("value", valores);
+                        value.SetAttributeValue("value", String.Join("\\0", (String[])rkey.GetValue(s)) + "\\0\\0");
                         break;
                     case RegistryValueKind.Binary:
                     case RegistryValueKind.None:
-                        byte[] bytesValue = (byte[])rkey.GetValue(s);
-                        String bytes = "";
-                        for (int i = 0; i < bytesValue.Length; i++)
-                        {
-                            //registro.Write("{0} ", bytesValue[i]);    //Decimal
-                            bytes += bytesValue[i] + " ";    //Hexadecimal
-                        }
-                        value.SetAttributeValue("value", bytes);
+                        value.SetAttributeValue("value", BitConverter.ToString((byte[])rkey.GetValue(s)));
                         break;
+                    case RegistryValueKind.String:
+                        String valor1 = (String)rkey.GetValue(s);
+                        value.SetAttributeValue("value", (valor1.CompareTo("") == 0) ? "" : SanitizeXmlString(valor1));
+                        break;
+                    case RegistryValueKind.ExpandString:
+                        String valor2 = (String)rkey.GetValue(s, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
+                        value.SetAttributeValue("value", (valor2.CompareTo("") == 0)? "" : SanitizeXmlString(valor2));
+                        break;
+                    case RegistryValueKind.DWord:
+                    case RegistryValueKind.QWord:
                     default:
                         value.SetAttributeValue("value", rkey.GetValue(s));
                         break;
