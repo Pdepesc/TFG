@@ -9,9 +9,9 @@ using System.Text;
 
 namespace EvaluacionSistema
 {
-    class EvaluacionSoftware
+    class EvaluacionContadores
     {
-        //PerformanceCounter y otros (registros, WMI, ...)
+        //PerformanceCounter
         
         public static void GetReport()
         {
@@ -183,10 +183,7 @@ namespace EvaluacionSistema
                 "      TimeStamp: {6,-34} TimeStamp100nSec: {7}", sample.CounterType, sample.SystemFrequency, sample.BaseValue, sample.RawValue, sample.CounterFrequency, sample.CounterTimeStamp, sample.TimeStamp, sample.TimeStamp100nSec);
         }
 
-
-
-
-
+        
         public static void GetCategorias()
         {
             Console.WriteLine("Realizando reporte...");
@@ -261,99 +258,6 @@ namespace EvaluacionSistema
                     + ex.Message);
             }
         }
-
-        //REGISTRO DE WINDOWS
-        public static void GetRegistro()
-        {
-            string path = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
-            Console.WriteLine("Iniciando reporte del registro...");
-            Encoding encoding = (Encoding)Encoding.UTF8.Clone();
-            encoding.EncoderFallback = EncoderFallback.ReplacementFallback;
-            FileStream fs = new FileStream(path + "\\Registro.txt", FileMode.CreateNew);
-            using (StreamWriter registro = new StreamWriter(fs, encoding))
-            using (StreamWriter registroInaccesible = new StreamWriter(path + "\\RegistrosInaccesibles.txt"))
-            //using (StreamWriter registroInaccesible = new StreamWriter(@"C:\Users\Public\RegistrosInaccesibles.txt"))
-            {
-                PrintKeys(Registry.ClassesRoot, registro, registroInaccesible);
-                Console.WriteLine("ClassesRoot done");
-                registro.WriteLine("-----------------------------------------------------------------------");
-                PrintKeys(Registry.CurrentConfig, registro, registroInaccesible);
-                Console.WriteLine("CurrentConfig done");
-                registro.WriteLine("-----------------------------------------------------------------------");
-                PrintKeys(Registry.CurrentUser, registro, registroInaccesible);
-                Console.WriteLine("CurrentUser done");
-                registro.WriteLine("-----------------------------------------------------------------------");
-                PrintKeys(Registry.LocalMachine, registro, registroInaccesible);
-                Console.WriteLine("LocalMachine done");
-                registro.WriteLine("-----------------------------------------------------------------------");
-                PrintKeys(Registry.Users, registro, registroInaccesible);
-                Console.WriteLine("Users done");
-            }
-            Console.WriteLine("Reporte finalizado!");
-            Console.Read();
-        }
         
-        //REGISTRO DE WINDOWS
-        private static void PrintKeys(RegistryKey rkey, StreamWriter registro, StreamWriter registroInaccesible)
-        {
-            String[] subkeys = rkey.GetSubKeyNames();
-            String[] valueNames = rkey.GetValueNames();
-
-            foreach (String s in valueNames)
-            {
-                String valueName = s;
-                if (s.CompareTo("") == 0)
-                    valueName = "(Predeterminado)";
-
-                registro.Flush();
-
-
-                RegistryValueKind rvk = rkey.GetValueKind(s);
-
-                registro.Write("{0}\\{1} :: {2} :: ", rkey.Name, valueName, rvk);
-
-                switch (rvk)
-                {
-                    case RegistryValueKind.DWord :
-                        registro.Write("{0}", (int)rkey.GetValue(s));
-                        break;
-                    case RegistryValueKind.QWord:
-                        registro.Write("{0}", (long)rkey.GetValue(s));
-                        break;
-                    case RegistryValueKind.MultiString:
-                        String[] multistringValue = (String[])rkey.GetValue(s);
-                        for(int i = 0; i < multistringValue.Length; i++)
-                        {
-                            registro.Write("{0}\t", multistringValue[i]);
-                        }
-                        break;
-                    case RegistryValueKind.Binary:
-                    case RegistryValueKind.None:
-                        byte[] bytesValue = (byte[])rkey.GetValue(s);
-                        for (int i = 0; i < bytesValue.Length; i++)
-                        {
-                            //registro.Write("{0} ", bytesValue[i]);    //Decimal
-                            registro.Write("{0:X2} ", bytesValue[i]);    //Hexadecimal
-                        }
-                        break;
-                    default:
-                        registro.Write("{0}", rkey.GetValue(s));
-                        break;
-                }
-                registro.Write("\r\n");
-            }
-
-            foreach (String s in subkeys)
-            {
-                try { 
-                    RegistryKey subrkey = rkey.OpenSubKey(s);
-                    PrintKeys(subrkey, registro, registroInaccesible);
-                }
-                catch (System.Security.SecurityException e)
-                {
-                    registroInaccesible.WriteLine(rkey.Name + "\\" + s);
-                }
-            }
-        } 
     }
 }

@@ -9,11 +9,7 @@ namespace EvaluacionSistema
 {
     class Program
     {
-        public static String host = "192.168.1.10";
-        public static String work_dir = "/var/www/";
-        public static String user_sftp = "pi";
-        public static String pass_sftp = "raspberry";
-        public static int port_ftp = 22;
+        private static String cs = @"server=192.168.1.10;userid=paris;password=paris;database=TFG";
 
         static void Main(string[] args)
         {
@@ -21,7 +17,6 @@ namespace EvaluacionSistema
             Console.WriteLine("Iniciando programa...");
 
             Properties properties = new Properties("Properties.properties");
-            string cs = @"server=192.168.1.10;userid=paris;password=paris;database=TFG";
             MySqlConnection conn = new MySqlConnection(cs);
 
             Console.WriteLine();
@@ -38,11 +33,24 @@ namespace EvaluacionSistema
                 if (properties.get("TipoEvaluacion").CompareTo("Inicial") == 0)
                 {
                     #region EvaluacionInicial
-                    Console.WriteLine("\tEvaluacion inicial...");
 
-                    EvaluacionInicial.Evaluacion(conn, properties);
+                    Console.WriteLine("\tEvaluacion inicial...");
+                    
+                    MySqlTransaction sqltransaction = conn.BeginTransaction();
+
+                    if (EvaluacionHardware.EvaluacionInicial(conn, properties) && EvaluacionRegistro.EvaluacionInicial(conn, properties))
+                    {
+                        sqltransaction.Commit();
+                        properties.set("TipoEvaluacion", "Completa");
+                        properties.Save();
+                    }
+                    else
+                    {
+                        sqltransaction.Rollback();
+                    }
 
                     Console.WriteLine("\tFin de la evaluacion inicial!");
+
                     #endregion
                 }
                 //Evaluacion completa y deteccion y solucion de errores
@@ -132,45 +140,6 @@ namespace EvaluacionSistema
                 default: break;
             }*/
             Console.Read();
-        }
-
-        public static void PruebaFTP()
-        {
-
-            /*
-            
-            const int port = 22;
-            const string host = "domainna.me";
-            const string username = "chucknorris";
-            const string password = "norrischuck";
-            const string workingdirectory = "/highway/hell";
-            const string uploadfile = @"c:yourfilegoeshere.txt";
-
-            Console.WriteLine("Creating client and connecting");
-            using (var client = new SftpClient(host, port, username, password))
-            {
-                client.Connect();
-                Console.WriteLine("Connected to {0}", host);
-
-                client.ChangeDirectory(workingdirectory);
-                Console.WriteLine("Changed directory to {0}", workingdirectory);
-
-                var listDirectory = client.ListDirectory(workingdirectory);
-                Console.WriteLine("Listing directory:");
-                foreach (var fi in listDirectory)
-                {
-                    Console.WriteLine(" - " + fi.Name);
-                }
-
-                using (var fileStream = new FileStream(uploadfile, FileMode.Open))
-                {
-                    Console.WriteLine("Uploading {0} ({1:N0} bytes)",
-                                        uploadfile, fileStream.Length);
-                    client.BufferSize = 4 * 1024; // bypass Payload error large files
-                    client.UploadFile(fileStream, Path.GetFileName(uploadfile));
-                }
-            }
-            */
         }
     }
 }

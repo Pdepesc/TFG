@@ -5,12 +5,16 @@ using System.Text;
 using System.Threading.Tasks;
 using OpenHardwareMonitor;
 using OpenHardwareMonitor.Hardware;
+using MySql.Data.MySqlClient;
+using System.Threading;
 
 namespace EvaluacionSistema
 {
     class EvaluacionHardware
     {
         private static Computer miPc = new Computer() { CPUEnabled = true, FanControllerEnabled = true, GPUEnabled = true, HDDEnabled = true, MainboardEnabled = true, RAMEnabled = true };
+
+        #region Reporte/Informe
 
         //Obtiene un Reporte con toda la información necesaria (por linea de comandos)
         public static void GetReport()
@@ -197,6 +201,101 @@ namespace EvaluacionSistema
             Console.WriteLine(tab + "SoftwareValue: " + control.SoftwareValue);
         }
 
+        #endregion Reporte/Informe
+
         //Metodos de comprobación de funcionamiento (comparación y determinación del correcto funcionamiento del sistema)
+
+
+        #region EvaluacionInicial
+
+        public static bool EvaluacionInicial(MySqlConnection conn, Properties properties)
+        {
+            try
+            {
+                Console.WriteLine("Iniciando evaluacion inicial de Hardware...");
+
+                //Añadir esta estación a la BBDD y obtener su ID
+                string sql = "INSERT INTO Estacion(Empresa, Modelo, VersionRegistro) VALUES (@empresa, @modelo, @version)";
+
+                MySqlCommand cmd = new MySqlCommand(sql, conn);
+                cmd.Prepare();
+
+                cmd.Parameters.AddWithValue("@empresa", properties.get("Empresa"));
+                cmd.Parameters.AddWithValue("@modelo", properties.get("Modelo"));
+                cmd.Parameters.AddWithValue("@version", properties.get("VersionRegistro"));
+                cmd.ExecuteNonQuery();
+
+                long id = cmd.LastInsertedId;
+                properties.set("IdEstacion", id.ToString());
+
+                //Actualizar componentes hardware 100 veces
+                Console.WriteLine("Actualizando componentes hardware...");
+                ActualizarHardware(101);
+                Console.WriteLine("\tComponentes actualizados!");
+
+                //Leer componenetes Hardware y guardarlos en la BBDD
+                sql = LeerCompoenentes(id, miPc.Hardware);
+                cmd.CommandText = sql;
+                cmd.ExecuteNonQuery();
+
+                Console.WriteLine("Evaluacion inicial de Hardware finalizada!");
+
+                return true;
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine("Error: {0}", ex.ToString());
+                return false;
+            }
+        }
+
+        private static void ActualizarHardware(int contador)
+        {
+            miPc.Open();
+            while (contador-- != 0)
+                ActualizarComponentes(miPc.Hardware); Thread.Sleep(100);
+        }
+
+        private static void ActualizarComponentes(IHardware[] hardwareCollection)
+        {
+            foreach (IHardware hardware in hardwareCollection)
+            {
+                hardware.Update();
+                if (hardware.SubHardware.Length > 0) ActualizarComponentes(hardware.SubHardware);
+            }
+        }
+
+        private static string LeerCompoenentes(long id, IHardware[] hardwareCollection)
+        {
+            string sql = "INSERT INTO Hardware(ID_Estacion, Identificador, Componente, Sensor, Minimo, Maximo, Media, Ultimo) VALUES ";
+            foreach (IHardware hardware in hardwareCollection)
+            {
+                foreach (ISensor sensor in hardware.Sensors)
+                {
+                    sql += "(" + id
+                        + ", '" + sensor.Identifier + "'"
+                        + ", '" + hardware.Name + "'"
+                        + ", '" + sensor.Name + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Min)) * 100.0) / 100.0) + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Max)) * 100.0) / 100.0) + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(Media(sensor.Values))) * 100.0) / 100.0) + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Values.ElementAt<SensorValue>(sensor.Values.Count() - 1).Value)) * 100.0) / 100.0) + "'"
+                        + "), ";
+                }
+            }
+            return sql.Remove(sql.LastIndexOf(","), 2);
+        }
+
+        private static float Media(IEnumerable<SensorValue> valores)
+        {
+            float suma = 0;
+            foreach (SensorValue valor in valores)
+            {
+                suma += valor.Value;
+            }
+            return suma / valores.Count();
+        }
+
+        #endregion EvaluacionInicial
     }
 }

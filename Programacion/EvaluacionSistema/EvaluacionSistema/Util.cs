@@ -12,6 +12,7 @@ namespace EvaluacionSistema
 {
     class Util
     {
+        #region ObtenerRegistro
         public static void GetRegistro()
         {
             XElement registro = new XElement("registro");
@@ -106,43 +107,6 @@ namespace EvaluacionSistema
             parent.Add(key);
         }
         
-        #region Crear XML 
-        public static void crear_XML()
-        {
-            XDocument miXML = new XDocument(new XDeclaration("1.0", "utf-8", "yes"),
-                new XElement("Empleados",
-
-                new XElement("Empleado",
-                new XAttribute("Id_Empleado", "321654"),
-                new XElement("Nombre", "Miguel Suarez"),
-                new XElement("Edad", "30")),
-
-                new XElement("Empleado",
-                new XAttribute("Id_Empleado", "123456"),
-                new XElement("Nombre", "Maria Martinez"),
-                new XElement("Edad", "27")),
-
-                new XElement("Empleado",
-                new XAttribute("Id_Empleado", "987654"),
-                new XElement("Nombre", "Juan Gonzales"),
-                new XElement("Edad", "25"))
-                ));
-            miXML.Save("MiDoc.xml");
-        }
-        #endregion
-
-        #region Buscar en XML 
-
-        private void buscarEnXML(string idempleado)
-        {
-            XDocument miXML = XDocument.Load(@"C:\Prueba\MiDoc.xml");
-
-            var nombreusu = from nombre in miXML.Elements("Empleados").Elements("Empleado")
-                            where nombre.Attribute("Id_Empleado").Value == idempleado
-                            select nombre.Element("Nombre").Value;
-        }
-        #endregion
-        
         /// <summary>
         /// Remove illegal XML characters from a string.
         /// </summary>
@@ -181,5 +145,44 @@ namespace EvaluacionSistema
                 (character >= 0x10000 && character <= 0x10FFFF)
             );
         }
+
+        #endregion ObtenerRegistro
+
+        #region Crear XML 
+        public static void crear_XML()
+        {
+            XDocument miXML = new XDocument(new XDeclaration("1.0", "utf-8", "yes"),
+                new XElement("Empleados",
+
+                new XElement("Empleado",
+                new XAttribute("Id_Empleado", "321654"),
+                new XElement("Nombre", "Miguel Suarez"),
+                new XElement("Edad", "30")),
+
+                new XElement("Empleado",
+                new XAttribute("Id_Empleado", "123456"),
+                new XElement("Nombre", "Maria Martinez"),
+                new XElement("Edad", "27")),
+
+                new XElement("Empleado",
+                new XAttribute("Id_Empleado", "987654"),
+                new XElement("Nombre", "Juan Gonzales"),
+                new XElement("Edad", "25"))
+                ));
+            miXML.Save("MiDoc.xml");
+        }
+        #endregion
+
+        #region Buscar en XML 
+
+        private void buscarEnXML(string idempleado)
+        {
+            XDocument miXML = XDocument.Load(@"C:\Prueba\MiDoc.xml");
+
+            var nombreusu = from nombre in miXML.Elements("Empleados").Elements("Empleado")
+                            where nombre.Attribute("Id_Empleado").Value == idempleado
+                            select nombre.Element("Nombre").Value;
+        }
+        #endregion
     }
 }

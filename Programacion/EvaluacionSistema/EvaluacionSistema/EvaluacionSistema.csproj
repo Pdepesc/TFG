@@ -51,11 +51,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EvaluacionHardware.cs" />
-    <Compile Include="EvaluacionInicial.cs" />
-    <Compile Include="EvaluacionSoftware.cs" />
+    <Compile Include="EvaluacionRegistro.cs" />
+    <Compile Include="EvaluacionContadores.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SFTPManager.cs" />
     <Compile Include="Util.cs" />
   </ItemGroup>
   <ItemGroup>
