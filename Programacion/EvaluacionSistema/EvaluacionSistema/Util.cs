@@ -50,25 +50,26 @@ namespace EvaluacionSistema
             {
                 
                 XElement value = new XElement("v");
-                value.SetAttributeValue("name", (s.CompareTo("") == 0)? "(Predeterminado)" : SanitizeXmlString(s));
+                value.SetAttributeValue("name", (s.CompareTo("") == 0)? "" : SanitizeXmlString(s));
                 
                 RegistryValueKind rvk = rkey.GetValueKind(s);
                 switch (rvk)
                 {
-                    case RegistryValueKind.MultiString:
-                        value.SetAttributeValue("value", String.Join("\\0", (String[])rkey.GetValue(s)) + "\\0\\0");
-                        break;
-                    case RegistryValueKind.Binary:
-                    case RegistryValueKind.None:
-                        value.SetAttributeValue("value", BitConverter.ToString((byte[])rkey.GetValue(s)));
-                        break;
                     case RegistryValueKind.String:
                         String valor1 = (String)rkey.GetValue(s);
                         value.SetAttributeValue("value", (valor1.CompareTo("") == 0) ? "" : SanitizeXmlString(valor1));
                         break;
                     case RegistryValueKind.ExpandString:
                         String valor2 = (String)rkey.GetValue(s, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
-                        value.SetAttributeValue("value", (valor2.CompareTo("") == 0)? "" : SanitizeXmlString(valor2));
+                        value.SetAttributeValue("value", (valor2.CompareTo("") == 0) ? "" : SanitizeXmlString(valor2));
+                        break;
+                    case RegistryValueKind.MultiString:
+                        value.SetAttributeValue("value", String.Join(" ", (String[])rkey.GetValue(s)));
+                        break;
+                    case RegistryValueKind.Binary:
+                    case RegistryValueKind.None:
+                        //value.SetAttributeValue("value", BitConverter.ToString((byte[])rkey.GetValue(s)));
+                        value.SetAttributeValue("value", Convert.ToBase64String((byte[])rkey.GetValue(s)));
                         break;
                     case RegistryValueKind.DWord:
                     case RegistryValueKind.QWord:
@@ -147,42 +148,5 @@ namespace EvaluacionSistema
         }
 
         #endregion ObtenerRegistro
-
-        #region Crear XML 
-        public static void crear_XML()
-        {
-            XDocument miXML = new XDocument(new XDeclaration("1.0", "utf-8", "yes"),
-                new XElement("Empleados",
-
-                new XElement("Empleado",
-                new XAttribute("Id_Empleado", "321654"),
-                new XElement("Nombre", "Miguel Suarez"),
-                new XElement("Edad", "30")),
-
-                new XElement("Empleado",
-                new XAttribute("Id_Empleado", "123456"),
-                new XElement("Nombre", "Maria Martinez"),
-                new XElement("Edad", "27")),
-
-                new XElement("Empleado",
-                new XAttribute("Id_Empleado", "987654"),
-                new XElement("Nombre", "Juan Gonzales"),
-                new XElement("Edad", "25"))
-                ));
-            miXML.Save("MiDoc.xml");
-        }
-        #endregion
-
-        #region Buscar en XML 
-
-        private void buscarEnXML(string idempleado)
-        {
-            XDocument miXML = XDocument.Load(@"C:\Prueba\MiDoc.xml");
-
-            var nombreusu = from nombre in miXML.Elements("Empleados").Elements("Empleado")
-                            where nombre.Attribute("Id_Empleado").Value == idempleado
-                            select nombre.Element("Nombre").Value;
-        }
-        #endregion
     }
 }

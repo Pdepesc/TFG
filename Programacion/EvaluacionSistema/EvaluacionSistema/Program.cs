@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
+using Microsoft.Win32;
 
 namespace EvaluacionSistema
 {
@@ -13,7 +14,6 @@ namespace EvaluacionSistema
 
         static void Main(string[] args)
         {
-
             Console.WriteLine("Iniciando programa...");
 
             Properties properties = new Properties("Properties.properties");
