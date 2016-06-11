@@ -16,23 +16,28 @@ namespace EvaluacionSistema
         public static bool EvaluacionInicial(MySqlConnection conn, Properties properties)
         {
             try {
-                Console.WriteLine("Iniciando evaluacion inicial del Registro...");
+                Console.WriteLine("Evaluacion inicial del Registro...");
 
-                Console.WriteLine("Comprobando version del registro...");
+                Console.WriteLine("\tComprobando version del registro...");
 
                 ComprobarVersionRegistro(conn, properties);
 
-                Console.WriteLine("Comprobando valores del registro...");
+                Console.WriteLine("\tVersion del registro comprobada!");
 
-                int fallos = ComprobarRegistro();
-                if (fallos > 0)
-                    Console.WriteLine("Se han corergido " + fallos + " registros erroneos!");
+                Console.WriteLine("\tComprobando valores del registro...");
+
+                int[] fallos = ComprobarContenidoRegistro();
+                if (fallos[0] > 0)
+                    Console.WriteLine("\t" + fallos[0] + " registros erroneos corregidos!");
+                if (fallos[1] > 0)
+                    Console.WriteLine("\t" + fallos[1] + " registros erroneos no se han podido corregir!");
 
                 Console.WriteLine("Evaluacion inicial del Registro finalizada!");
                 return true;
             }
             catch (Exception e)
             {
+                Console.WriteLine(e.ToString());
                 return false;
             }
         }
@@ -57,7 +62,7 @@ namespace EvaluacionSistema
             
             if (versionLocal != versionBD)
             {
-                Console.WriteLine("Actualizando el fichero del registro...");
+                Console.WriteLine("\t\tActualizando el fichero del registro...");
                 
                 SFTPManager.Download(url, "Registro.xml");
                 
@@ -68,86 +73,106 @@ namespace EvaluacionSistema
                 cmd.Parameters.AddWithValue("@version", versionBD.ToString());
                 cmd.Parameters.AddWithValue("@id", properties.get("IdEstacion"));
                 cmd.ExecuteNonQuery();
+
+                Console.WriteLine("\t\tFichero del registro actualizado!");
             }
         }
         
-        private static int ComprobarRegistro()
-        {
-            List<String[]> values = ParseXML();
-            String path, nombre, valor, tipo;
-            int fallos = 0;
-            
-            foreach(String[] value in values){
-                path = value[0];
-                nombre = value[1];
-                valor = value[2];
-                tipo = value[3];
-                Object registro = Registry.GetValue(path, nombre, null);
-                switch (tipo)
-                {
-                    case "String":
-                        if (valor.CompareTo(Util.SanitizeXmlString((String)registro)) != 0)
-                            Registry.SetValue(path, nombre, valor, RegistryValueKind.String); fallos++;
-                        break;
-                    case "ExpandString":
-                        if (valor.CompareTo(Util.SanitizeXmlString((String)registro)) != 0)
-                            Registry.SetValue(path, nombre, valor.Split(' '), RegistryValueKind.ExpandString); fallos++;
-                        break;
-                    case "MultiString":
-                        if (valor.CompareTo(String.Join(" ", (String[])registro)) != 0)
-                            Registry.SetValue(path, nombre, valor.Split(' '), RegistryValueKind.MultiString); fallos++;
-                        break;
-                    case "Binary":
-                        if (valor.CompareTo(Convert.ToBase64String((byte[])registro)) != 0)
-                            Registry.SetValue(path, nombre, Convert.FromBase64String(valor), RegistryValueKind.Binary); fallos++;
-                        break;
-                    case "None":
-                        if (valor.CompareTo(Convert.ToBase64String((byte[])registro)) != 0)
-                            Registry.SetValue(path, nombre, Convert.FromBase64String(valor), RegistryValueKind.None); fallos++;
-                        break;
-                    case "DWord":
-                        if (valor.CompareTo(((Int32)registro).ToString()) != 0)
-                            Registry.SetValue(path, nombre, Int32.Parse(valor), RegistryValueKind.DWord); fallos++;
-                        break;
-                    case "QWord":
-                        if (valor.CompareTo(((Int64)registro).ToString()) != 0)
-                            Registry.SetValue(path, nombre, Int64.Parse(valor), RegistryValueKind.QWord); fallos++;
-                        break;
-                }
-            }
-            
-            return fallos;
-        }
-
-        private static List<String[]> ParseXML()
+        private static int[] ComprobarContenidoRegistro()
         {
             XmlDocument xml = new XmlDocument();
-            xml.Load("");
+            xml.Load("Registro.xml");
             XmlNodeList value_nodes = xml.GetElementsByTagName("v");
-            List<String[]> values = new List<string[]>();
 
             String path, nombre, valor, tipo;
+            int fallosCorregidos = 0;
+            int fallosNoCorregidos = 0;
 
-            for (int i = 0; i < value_nodes.Count; i++)
+            foreach(XmlNode nodo in value_nodes)
             {
-                path = GetPath(value_nodes.Item(i));
-                nombre = value_nodes.Item(i).Attributes.Item(0).Value;
-                valor = value_nodes.Item(i).Attributes.Item(1).Value;
-                tipo = value_nodes.Item(i).Attributes.Item(2).Value;
-                values.Add(new String[]{ path, nombre, valor, tipo});
+                path = GetPath(nodo);
+                nombre = nodo.Attributes.Item(0).Value;
+                valor = nodo.Attributes.Item(1).Value;
+                tipo = nodo.Attributes.Item(2).Value;
+                try {
+                    if (FalloRegistro(path, nombre, valor, tipo)) fallosCorregidos++;
+                }
+                catch (Exception e)
+                {
+                    fallosNoCorregidos++;
+                }
             }
+            return new int[] { fallosCorregidos, fallosNoCorregidos};
+        }
 
-            return values;
+        private static bool FalloRegistro(String path, String nombre, String valor, String tipo)
+        {
+            Object registro = Registry.GetValue(path, nombre, null);
+            switch (tipo)
+            {
+                case "String":
+                    if (valor.CompareTo(Util.SanitizeXmlString((String)registro)) != 0)
+                    {
+                        Registry.SetValue(path, nombre, valor, RegistryValueKind.String);
+                        return true;
+                    }
+                    break;
+                case "ExpandString":
+                    if (Environment.ExpandEnvironmentVariables(valor).CompareTo(Util.SanitizeXmlString((String)registro)) != 0)
+                    {
+                        Registry.SetValue(path, nombre, valor, RegistryValueKind.ExpandString);
+                        return true;
+                    }
+                    break;
+                case "MultiString":
+                    if (valor.CompareTo(String.Join(" ", (String[])registro)) != 0)
+                    {
+                        Registry.SetValue(path, nombre, valor.Split(' '), RegistryValueKind.MultiString);
+                        return true;
+                    }
+                    break;
+                case "Binary":
+                    if (valor.CompareTo(Convert.ToBase64String((byte[])registro)) != 0)
+                    {
+                        Registry.SetValue(path, nombre, Convert.FromBase64String(valor), RegistryValueKind.Binary);
+                        return true;
+                    }
+                    break;
+                case "None":
+                    if (valor.CompareTo(Convert.ToBase64String((byte[])registro)) != 0)
+                    {
+                        Registry.SetValue(path, nombre, Convert.FromBase64String(valor), RegistryValueKind.None);
+                        return true;
+                    }
+                    break;
+                case "DWord":
+                    if (valor.CompareTo(((Int32)registro).ToString()) != 0)
+                    {
+                        Registry.SetValue(path, nombre, Int32.Parse(valor), RegistryValueKind.DWord);
+                        return true;
+                    }
+                    break;
+                case "QWord":
+                    if (valor.CompareTo(((Int64)registro).ToString()) != 0)
+                    {
+                        Registry.SetValue(path, nombre, Int64.Parse(valor), RegistryValueKind.QWord);
+                        return true;
+                    }
+                    break;
+            }
+            return false;
         }
 
         private static String GetPath(XmlNode nodo)
         {
-            String path = "";
-            while((nodo = nodo.ParentNode).Attributes.Item(0).Value.CompareTo("registro") != 0)
+            nodo = nodo.ParentNode;
+            String path = nodo.Attributes.Item(0).Value;
+            while (nodo.ParentNode.Name.CompareTo("registro") != 0)
             {
+                nodo = nodo.ParentNode;
                 path = nodo.Attributes.Item(0).Value + "\\" + path;
             }
-            return path.Remove(path.LastIndexOf("\\"));
+            return path;
         }
     }
 }

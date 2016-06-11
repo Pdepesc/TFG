@@ -212,7 +212,9 @@ namespace EvaluacionSistema
         {
             try
             {
-                Console.WriteLine("Iniciando evaluacion inicial de Hardware...");
+                Console.WriteLine("Evaluacion inicial de Hardware...");
+
+                Console.WriteLine("\tAñadiendo estacion a la BBDD...");
 
                 //Añadir esta estación a la BBDD y obtener su ID
                 string sql = "INSERT INTO Estacion(Empresa, Modelo, VersionRegistro) VALUES (@empresa, @modelo, @version)";
@@ -228,15 +230,18 @@ namespace EvaluacionSistema
                 long id = cmd.LastInsertedId;
                 properties.set("IdEstacion", id.ToString());
 
+                Console.WriteLine("\tEstacion añadida a la BBDD!");
+
                 //Actualizar componentes hardware 100 veces
-                Console.WriteLine("Actualizando componentes hardware...");
+                Console.WriteLine("\tActualizando componentes hardware...");
                 ActualizarHardware(101);
-                Console.WriteLine("\tComponentes actualizados!");
 
                 //Leer componenetes Hardware y guardarlos en la BBDD
                 sql = LeerCompoenentes(id, miPc.Hardware);
                 cmd.CommandText = sql;
                 cmd.ExecuteNonQuery();
+
+                Console.WriteLine("\tComponentes actualizados!");
 
                 Console.WriteLine("Evaluacion inicial de Hardware finalizada!");
 

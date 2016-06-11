@@ -80,7 +80,7 @@ namespace EvaluacionSistema
 
                 value.SetAttributeValue("type", rkey.GetValueKind(s));
                 
-                key.Add(value);
+                if(rvk != RegistryValueKind.Unknown) key.Add(value);
             }
 
             try

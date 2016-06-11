@@ -28,13 +28,11 @@ namespace EvaluacionSistema
                 //Prueba de conexion a la BBDD
                 conn.Open();
 
-                Console.WriteLine("¡Conexion a la BBDD correcta!");
+                Console.WriteLine("¡Conexion a la BBDD correcta!\r\n\r\n");
                 
                 if (properties.get("TipoEvaluacion").CompareTo("Inicial") == 0)
                 {
                     #region EvaluacionInicial
-
-                    Console.WriteLine("\tEvaluacion inicial...");
                     
                     MySqlTransaction sqltransaction = conn.BeginTransaction();
 
@@ -49,7 +47,7 @@ namespace EvaluacionSistema
                         sqltransaction.Rollback();
                     }
 
-                    Console.WriteLine("\tFin de la evaluacion inicial!");
+                    Console.WriteLine("\r\n\r\nFin de la evaluacion inicial!");
 
                     #endregion
                 }
