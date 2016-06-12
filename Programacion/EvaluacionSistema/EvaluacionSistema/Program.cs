@@ -57,6 +57,17 @@ namespace EvaluacionSistema
                     #region EvaluacionCompleta
                     /*
 
+                    List<String[]>[] registrosDefectuosos = EvaluacionRegistro.EvaluacionCompleta();  //List<String[ruta, nombreClave]>[Corregidos, no corregidos]
+                    if(registrosDefectuosos.Count > 0)
+                        EvaluacionRegistro.EnviarInforme();    //
+
+                    
+                    bool errorHardware = EvaluacionHardware.EvaluacionCompleta();
+                    if(errorHardware)
+                        EvaluacionHardware.EnviarInforme();
+
+
+
                     UTILIZAR UNA CLASE INCIDENCIA QUE ALMACENE LOS STRINGS CON EL ERROR HARDWARE Y EL ERROR SOFTWARE? Y SE UTILICE COMO
                     VALOR DEVUELTO POR LOS METODOS EVALUACIONHARDWARE.EVALUACION Y EVALUACIONSOFTWARE.EVALUACION O YO K SE
                     
@@ -65,10 +76,7 @@ namespace EvaluacionSistema
                     List<List<String>> registrosDefectuosos;
                     int errorSoftware = 0;
 
-                    EvaluacionHardware.Evaluacion(errorHardware);
-                    //Descargar valores de fabrica de la propia estacion 
-                    //Descargar valores de las estaciones con el mismo modelo
-                    //Hacer comprobaciones
+                    
 
                     registrosDefectuosos = EvaluacionSoftware.EvaluacionRegistro(); return List < List < String >> registrosMalos; (Clave, valor, tipo)
          

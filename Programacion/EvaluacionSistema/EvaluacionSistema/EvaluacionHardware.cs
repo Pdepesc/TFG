@@ -302,5 +302,22 @@ namespace EvaluacionSistema
         }
 
         #endregion EvaluacionInicial
+
+        #region EvaluacionCompleta
+
+        public static bool EvaluacionCompleta()
+        {
+            //Leer valores de la estacion local
+            //Descargar valores de fabrica de la propia estacion 
+            //Descargar valores de las estaciones con el mismo modelo
+            //Hacer comprobaciones
+
+            /*
+            Igual hcambio el bool por una lista de strings o lo que sea que almacene los componentes que fallan
+            */
+            return false;
+        }
+
+        #endregion EvaluacionCompleta
     }
 }
