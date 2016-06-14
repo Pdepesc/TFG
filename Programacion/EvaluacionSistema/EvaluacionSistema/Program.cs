@@ -55,49 +55,27 @@ namespace EvaluacionSistema
                 else
                 {
                     #region EvaluacionCompleta
-                    /*
 
-                    List<String[]>[] registrosDefectuosos = EvaluacionRegistro.EvaluacionCompleta();  //List<String[ruta, nombreClave]>[Corregidos, no corregidos]
-                    if(registrosDefectuosos.Count > 0)
-                        EvaluacionRegistro.EnviarInforme();    //
-
+                    List<String[]> fallosHardware = EvaluacionHardware.EvaluacionCompleta(conn, properties);    //String[Identificador, componente, sensor]
                     
-                    bool errorHardware = EvaluacionHardware.EvaluacionCompleta();
-                    if(errorHardware)
-                        EvaluacionHardware.EnviarInforme();
+                    //List<String[ruta, nombreClave]>[Corregidos, no corregidos]
+                    List<String[]>[] fallosRegistro = EvaluacionRegistro.EvaluacionCompleta(conn, properties);
 
+                    //EvaluacionContadores.EvaluacionCompleta(conn, properties);
 
-
-                    UTILIZAR UNA CLASE INCIDENCIA QUE ALMACENE LOS STRINGS CON EL ERROR HARDWARE Y EL ERROR SOFTWARE? Y SE UTILICE COMO
-                    VALOR DEVUELTO POR LOS METODOS EVALUACIONHARDWARE.EVALUACION Y EVALUACIONSOFTWARE.EVALUACION O YO K SE
-                    
-                    //Realizar comprobaciones para ver que todo funca bien
-                    int errorHardware = 0;
-                    List<List<String>> registrosDefectuosos;
-                    int errorSoftware = 0;
-
-                    
-
-                    registrosDefectuosos = EvaluacionSoftware.EvaluacionRegistro(); return List < List < String >> registrosMalos; (Clave, valor, tipo)
-         
-                         EvaluacionSoftware.EvaluacionContadores(errorSoftware);
-
-                    if (registrosDefectuosos.Count() > 0)
-                        //Comprobar si hay actualizacion del Registro (nueva version) -- Quizas esto haya que comprobarlo antes de evaluar
-                        //Actualizar fichero con el registro bueno
-                        //Actualizar registros defectuosos con los valores buenos
-                        //Enviar informe con los resultados (registros modificados y version del registro a la que se ha actualizado)
-
-                        if (errorHardware > 0)
-                            //Enviar informe de que es lo que esta fuera de los valores normales
-
-                            if (errorSoftware > 0)
-                    //Enviar informe de los errores encontrados -- Para esto tendria que esperar a la contestacion de la empresa
-                    */
-                    //FIN DE LA EVALUACION COMPLETA
                     #endregion
 
                     #region PostEvaluacion
+
+                    //PUEDE QUE LOS METODOS POSTEVALUACION LOS JUNTE EN UNA SOLA CLASE LLAMADA POSTEVALUACION/INCIDENCIA
+                    //QUE ALMACENE TODOS LOS OBJETOS DEVUELVOS POR LOS METODOS EVALUACIONCOMPLETA Y LOS PROCESE
+                    //  SE ENCARGARÍA DE ENVIAR INFORMES AL SERVIDOR Y APLICAR SCRIPTS O SOLUCIONES
+
+                    if (fallosHardware != null && fallosHardware.Count > 0)
+                        EvaluacionHardware.PostEvaluacion(fallosHardware);
+
+                    if (fallosRegistro[0].Count > 0 || fallosRegistro[1].Count > 0)
+                        EvaluacionRegistro.PostEvaluacion(fallosRegistro);
 
                     #endregion
                 }

@@ -11,8 +11,24 @@ namespace EvaluacionSistema
 {
     class EvaluacionContadores
     {
-        //PerformanceCounter
-        
+        #region EvaluacionCompleta
+
+        public static void EvaluacionCompleta()
+        {
+
+        }
+
+        #endregion EvaluacionCompleta
+
+        #region PostEvaluacion
+
+        public static void PostEvaluacion()
+        {
+
+        }
+
+        #endregion PostEvaluacion
+
         public static void GetReport()
         {
             Console.WriteLine("--------------------------------------------------------------------------------");

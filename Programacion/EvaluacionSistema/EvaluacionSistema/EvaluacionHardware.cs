@@ -13,6 +13,168 @@ namespace EvaluacionSistema
     class EvaluacionHardware
     {
         private static Computer miPc = new Computer() { CPUEnabled = true, FanControllerEnabled = true, GPUEnabled = true, HDDEnabled = true, MainboardEnabled = true, RAMEnabled = true };
+        
+        #region EvaluacionInicial
+
+        public static bool EvaluacionInicial(MySqlConnection conn, Properties properties)
+        {
+            try
+            {
+                Console.WriteLine("Evaluacion inicial de Hardware...");
+
+                Console.WriteLine("\tAñadiendo estacion a la BBDD...");
+
+                //Añadir esta estación a la BBDD y obtener su ID
+                string sql = "INSERT INTO Estacion(Empresa, Modelo, VersionRegistro) VALUES (@empresa, @modelo, @version)";
+
+                MySqlCommand cmd = new MySqlCommand(sql, conn);
+                cmd.Prepare();
+
+                cmd.Parameters.AddWithValue("@empresa", properties.get("Empresa"));
+                cmd.Parameters.AddWithValue("@modelo", properties.get("Modelo"));
+                cmd.Parameters.AddWithValue("@version", properties.get("VersionRegistro"));
+                cmd.ExecuteNonQuery();
+
+                long id = cmd.LastInsertedId;
+                properties.set("IdEstacion", id.ToString());
+
+                Console.WriteLine("\tEstacion añadida a la BBDD!");
+
+                //Actualizar componentes hardware 100 veces
+                Console.WriteLine("\tActualizando componentes hardware...");
+                ActualizarHardware(101);
+
+                //Leer componenetes Hardware y guardarlos en la BBDD
+                sql = LeerCompoenentes(id, miPc.Hardware);
+                cmd.CommandText = sql;
+                cmd.ExecuteNonQuery();
+
+                Console.WriteLine("\tComponentes actualizados!");
+
+                Console.WriteLine("Evaluacion inicial de Hardware finalizada!");
+
+                return true;
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine("Error: {0}", ex.ToString());
+                return false;
+            }
+        }
+        
+        private static string LeerCompoenentes(long id, IHardware[] hardwareCollection)
+        {
+            string sql = "INSERT INTO Hardware(ID_Estacion, Identificador, Componente, Sensor, Minimo, Maximo, Media, Ultimo) VALUES ";
+            foreach (IHardware hardware in hardwareCollection)
+            {
+                foreach (ISensor sensor in hardware.Sensors)
+                {
+                    sql += "(" + id
+                        + ", '" + sensor.Identifier + "'"
+                        + ", '" + hardware.Name + "'"
+                        + ", '" + sensor.Name + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Min)) * 100.0) / 100.0) + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Max)) * 100.0) / 100.0) + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(Media(sensor.Values))) * 100.0) / 100.0) + "'"
+                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Values.ElementAt<SensorValue>(sensor.Values.Count() - 1).Value)) * 100.0) / 100.0) + "'"
+                        + "), ";
+                }
+            }
+            return sql.Remove(sql.LastIndexOf(","), 2);
+        }
+        
+        #endregion EvaluacionInicial
+
+        #region EvaluacionCompleta
+
+        public static List<String[]> EvaluacionCompleta(MySqlConnection conn, Properties properties)
+        {
+            //TODO: Revisar metricas usadas para decidir si falla o no (p.e. usar datos de otras estaciones con mismo modelo)
+            try
+            {
+                Console.WriteLine("Evaluacion completa de Hardware...");
+
+                Console.WriteLine("\tObteniendo datos de la BBDD...");
+
+                //Obtener datos de Hardware
+                string sql = "SELECT * FROM Hardware WHERE ID_Estacion = @id";
+
+                MySqlCommand cmd = new MySqlCommand(sql, conn);
+                cmd.Prepare();
+
+                cmd.Parameters.AddWithValue("@id", properties.get("IdEstacion"));
+
+                MySqlDataReader rdr = cmd.ExecuteReader();
+                
+                Console.WriteLine("\tConsulta realizada!");
+
+                //Actualizar componentes hardware 100 veces
+                Console.WriteLine("\tActualizando componentes hardware...");
+                ActualizarHardware(101);
+
+                return CompararComponentes(miPc.Hardware, rdr, conn, properties);
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine("Error: {0}", ex.ToString());
+                return null;
+            }
+        }
+
+        private static List<String[]> CompararComponentes(IHardware[] hardwareCollection, MySqlDataReader rdr, MySqlConnection conn, Properties properties)
+        {
+            List<String[]> fallos = new List<String[]>();
+            foreach (IHardware hardware in hardwareCollection)
+            {
+                foreach (ISensor sensor in hardware.Sensors)
+                {
+                    rdr.Read();
+                    if (Fallo(sensor, rdr, conn, properties))
+                        fallos.Add(new String[] { sensor.Identifier.ToString(), hardware.Name, sensor.Name });
+                }
+            }
+            return fallos;
+        }
+
+        //Aquie debo determinar las metricas a usar apra detectar el fallo
+        private static bool Fallo(ISensor sensor, MySqlDataReader rdr, MySqlConnection conn, Properties properties)
+        {
+            String sql = "UPDATE TABLE Hardware SET Ultimo = @ultimo WHERE ID_Estacion = @id AND Identificador = @identificador";
+            MySqlCommand cmd = new MySqlCommand(sql, conn);
+            cmd.Prepare();
+
+            cmd.Parameters.AddWithValue("@id", properties.get("IdEstacion"));
+
+            float minimo_local = (float)(Math.Truncate((Convert.ToDouble(sensor.Min)) * 100.0) / 100.0);
+            float maximo_local = (float)(Math.Truncate((Convert.ToDouble(sensor.Max)) * 100.0) / 100.0);
+            float media_local = (float)(Math.Truncate((Convert.ToDouble(Media(sensor.Values))) * 100.0) / 100.0);
+            float ultimo_local = (float)(Math.Truncate((Convert.ToDouble(sensor.Values.ElementAt<SensorValue>(sensor.Values.Count() - 1).Value)) * 100.0) / 100.0);
+            float minimo_bd = rdr.GetFloat("Minimo");
+            float maximo_bd = rdr.GetFloat("Maximo");
+
+            if (minimo_local < minimo_bd || maximo_local > maximo_bd || media_local < minimo_bd || media_local > maximo_bd)
+                return true;
+            else
+            {
+                cmd.Parameters.AddWithValue("@identificador", sensor.Identifier);
+                cmd.Parameters.AddWithValue("@ultimo", ultimo_local);
+
+                cmd.ExecuteNonQuery();
+
+                return false;
+            }
+        }
+
+        #endregion EvaluacionCompleta
+
+        #region PostEvaluacion
+
+        public static void PostEvaluacion(List<String[]> fallosHardware)
+        {
+
+        }
+
+        #endregion PostEvaluacion
 
         #region Reporte/Informe
 
@@ -98,7 +260,7 @@ namespace EvaluacionSistema
                 Console.WriteLine(hardware.GetReport());
             }
         }
-        
+
         //Metodos de ejemplo para acceder a toda la información (necesaria o no)
         //miPc.Hardware[]
         public static void GetHardware()
@@ -161,7 +323,7 @@ namespace EvaluacionSistema
                 Console.WriteLine(tab + "Nº Values: " + sensor.Values.Count());
                 if (sensor.Values.Count() > 0) GetValues(sensor, tab);
                 Console.WriteLine(tab + "Control: " + sensor.Control);
-                if(sensor.Control != null) GetControl(sensor.Control, tab);
+                if (sensor.Control != null) GetControl(sensor.Control, tab);
             }
         }
 
@@ -203,56 +365,7 @@ namespace EvaluacionSistema
 
         #endregion Reporte/Informe
 
-        //Metodos de comprobación de funcionamiento (comparación y determinación del correcto funcionamiento del sistema)
-
-
-        #region EvaluacionInicial
-
-        public static bool EvaluacionInicial(MySqlConnection conn, Properties properties)
-        {
-            try
-            {
-                Console.WriteLine("Evaluacion inicial de Hardware...");
-
-                Console.WriteLine("\tAñadiendo estacion a la BBDD...");
-
-                //Añadir esta estación a la BBDD y obtener su ID
-                string sql = "INSERT INTO Estacion(Empresa, Modelo, VersionRegistro) VALUES (@empresa, @modelo, @version)";
-
-                MySqlCommand cmd = new MySqlCommand(sql, conn);
-                cmd.Prepare();
-
-                cmd.Parameters.AddWithValue("@empresa", properties.get("Empresa"));
-                cmd.Parameters.AddWithValue("@modelo", properties.get("Modelo"));
-                cmd.Parameters.AddWithValue("@version", properties.get("VersionRegistro"));
-                cmd.ExecuteNonQuery();
-
-                long id = cmd.LastInsertedId;
-                properties.set("IdEstacion", id.ToString());
-
-                Console.WriteLine("\tEstacion añadida a la BBDD!");
-
-                //Actualizar componentes hardware 100 veces
-                Console.WriteLine("\tActualizando componentes hardware...");
-                ActualizarHardware(101);
-
-                //Leer componenetes Hardware y guardarlos en la BBDD
-                sql = LeerCompoenentes(id, miPc.Hardware);
-                cmd.CommandText = sql;
-                cmd.ExecuteNonQuery();
-
-                Console.WriteLine("\tComponentes actualizados!");
-
-                Console.WriteLine("Evaluacion inicial de Hardware finalizada!");
-
-                return true;
-            }
-            catch (MySqlException ex)
-            {
-                Console.WriteLine("Error: {0}", ex.ToString());
-                return false;
-            }
-        }
+        #region Utilidad
 
         private static void ActualizarHardware(int contador)
         {
@@ -270,27 +383,6 @@ namespace EvaluacionSistema
             }
         }
 
-        private static string LeerCompoenentes(long id, IHardware[] hardwareCollection)
-        {
-            string sql = "INSERT INTO Hardware(ID_Estacion, Identificador, Componente, Sensor, Minimo, Maximo, Media, Ultimo) VALUES ";
-            foreach (IHardware hardware in hardwareCollection)
-            {
-                foreach (ISensor sensor in hardware.Sensors)
-                {
-                    sql += "(" + id
-                        + ", '" + sensor.Identifier + "'"
-                        + ", '" + hardware.Name + "'"
-                        + ", '" + sensor.Name + "'"
-                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Min)) * 100.0) / 100.0) + "'"
-                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Max)) * 100.0) / 100.0) + "'"
-                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(Media(sensor.Values))) * 100.0) / 100.0) + "'"
-                        + ", '" + (float)(Math.Truncate((Convert.ToDouble(sensor.Values.ElementAt<SensorValue>(sensor.Values.Count() - 1).Value)) * 100.0) / 100.0) + "'"
-                        + "), ";
-                }
-            }
-            return sql.Remove(sql.LastIndexOf(","), 2);
-        }
-
         private static float Media(IEnumerable<SensorValue> valores)
         {
             float suma = 0;
@@ -301,23 +393,6 @@ namespace EvaluacionSistema
             return suma / valores.Count();
         }
 
-        #endregion EvaluacionInicial
-
-        #region EvaluacionCompleta
-
-        public static bool EvaluacionCompleta()
-        {
-            //Leer valores de la estacion local
-            //Descargar valores de fabrica de la propia estacion 
-            //Descargar valores de las estaciones con el mismo modelo
-            //Hacer comprobaciones
-
-            /*
-            Igual hcambio el bool por una lista de strings o lo que sea que almacene los componentes que fallan
-            */
-            return false;
-        }
-
-        #endregion EvaluacionCompleta
+        #endregion Utilidad
     }
 }
