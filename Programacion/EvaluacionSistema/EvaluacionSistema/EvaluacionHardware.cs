@@ -7,6 +7,7 @@ using OpenHardwareMonitor;
 using OpenHardwareMonitor.Hardware;
 using MySql.Data.MySqlClient;
 using System.Threading;
+using System.IO;
 
 namespace EvaluacionSistema
 {
@@ -171,7 +172,22 @@ namespace EvaluacionSistema
 
         public static void PostEvaluacion(List<String[]> fallosHardware)
         {
+            Console.WriteLine("PostEvaluacion de HArdware....");
 
+            String path = "Informes/InformeHardware-" + DateTime.Now.Day + "-" + DateTime.Now.Month + "-" + DateTime.Now.Year + ".txt";
+            using (StreamWriter sw = File.CreateText(path))
+            {
+                sw.WriteLine("Componentes Hardware que fallan");
+
+                foreach(String[] fallo in fallosHardware)
+                {
+                    //TODO: Preguntar en la empresa si ene l informe quieren el informe completo de todos los componentes o solo los que fallan
+                    sw.WriteLine(fallo[1] + " - " + fallo[2] + " (" + fallo[0] + ")");
+                    //GetReport(FileName);
+                }
+            }
+
+            SFTPManager.Upload("Informes/", path); Console.WriteLine("Informe enviado!");
         }
 
         #endregion PostEvaluacion

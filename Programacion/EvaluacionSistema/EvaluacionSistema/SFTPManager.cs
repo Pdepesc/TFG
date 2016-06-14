@@ -33,21 +33,22 @@ namespace EvaluacionSistema
 
         public static void Upload(String remoteDirectory, String localFilename)
         {
-            Console.WriteLine("Creating client and connecting");
+            //Console.WriteLine("Creating client and connecting");
             using (var client = new SftpClient(SFTPManager.host, SFTPManager.port_ftp, SFTPManager.user_sftp, SFTPManager.pass_sftp))
             {
                 client.Connect();
-                Console.WriteLine("Connected to {0}", host);
+                //Console.WriteLine("Connected to {0}", host);
 
-                client.ChangeDirectory(remoteDirectory);
-                Console.WriteLine("Changed directory to {0}", remoteDirectory);
+                client.ChangeDirectory(SFTPManager.work_dir + remoteDirectory);
+                //Console.WriteLine("Changed directory to {0}", remoteDirectory);
 
-                var listDirectory = client.ListDirectory(remoteDirectory);
+                /*
+                var listDirectory = client.ListDirectory(SFTPManager.work_dir + remoteDirectory);
                 Console.WriteLine("Listing directory:");
                 foreach (var fi in listDirectory)
                 {
                     Console.WriteLine(" - " + fi.Name);
-                }
+                }*/
 
                 using (var fileStream = new FileStream(localFilename, FileMode.Open))
                 {
@@ -56,6 +57,8 @@ namespace EvaluacionSistema
                     client.BufferSize = 4 * 1024; // bypass Payload error large files
                     client.UploadFile(fileStream, Path.GetFileName(localFilename));
                 }
+
+                client.Disconnect();
             }
         }
     }

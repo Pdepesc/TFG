@@ -51,31 +51,70 @@ namespace EvaluacionSistema
 
                     #endregion
                 }
-                //Evaluacion completa y deteccion y solucion de errores
                 else
                 {
                     #region EvaluacionCompleta
 
-                    List<String[]> fallosHardware = EvaluacionHardware.EvaluacionCompleta(conn, properties);    //String[Identificador, componente, sensor]
+                    //List<String[Identificador, componente, sensor]>
+                    List<String[]> fallosHardware = EvaluacionHardware.EvaluacionCompleta(conn, properties);
                     
-                    //List<String[ruta, nombreClave]>[Corregidos, no corregidos]
+                    //List<String[ruta, nombreClave]>[Corregidos, NoCorregidos]
                     List<String[]>[] fallosRegistro = EvaluacionRegistro.EvaluacionCompleta(conn, properties);
 
-                    //EvaluacionContadores.EvaluacionCompleta(conn, properties);
+                    //var fallosContadores = EvaluacionContadores.EvaluacionCompleta(conn, properties);
 
                     #endregion
 
                     #region PostEvaluacion
+                
+                    //Incidencia incidencia = new Incidencia(fallosHardware, fallosRegistro, fallosContadores);
+                    /*
+                    
+                    //AÑADIR NUEVA INCIDENCIA A LA BBDD
+                    //COMPROBAR SI ESTA RESUELTA O NO
+                    //ACTUAR EN CONSECUENCIA
+                        
+                    */
 
                     //PUEDE QUE LOS METODOS POSTEVALUACION LOS JUNTE EN UNA SOLA CLASE LLAMADA POSTEVALUACION/INCIDENCIA
                     //QUE ALMACENE TODOS LOS OBJETOS DEVUELVOS POR LOS METODOS EVALUACIONCOMPLETA Y LOS PROCESE
                     //  SE ENCARGARÍA DE ENVIAR INFORMES AL SERVIDOR Y APLICAR SCRIPTS O SOLUCIONES
 
+                    /*
+                    String sql = "INSERT INTO Evaluacion(ID_Estacion, Fecha, ErrorHardware, ErrorRegistro, ErrorContadores) " + 
+                            "VALUES (@idestacion, @fecha, @errorHardware, @errorRegistro, @errorContadores)";
+                    MySqlCommand cmd = new MySqlCommand(sql, conn);
+                    cmd.Prepare();
+
+                    cmd.Parameters.AddWithValue("@idestacion", properties.get("IdEstacion"));
+                    cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
+
                     if (fallosHardware != null && fallosHardware.Count > 0)
+                    {
                         EvaluacionHardware.PostEvaluacion(fallosHardware);
+                        cmd.Parameters.AddWithValue("@errorHardware", 1);
+                    }
+                    else
+                        cmd.Parameters.AddWithValue("@errorHardware", 0);
 
                     if (fallosRegistro[0].Count > 0 || fallosRegistro[1].Count > 0)
+                    {
                         EvaluacionRegistro.PostEvaluacion(fallosRegistro);
+                        cmd.Parameters.AddWithValue("@errorRegistro", 1);
+                    }
+                    else
+                        cmd.Parameters.AddWithValue("@errorHardware", 0);
+
+                    if(fallosContadores > 0)
+                    {
+                        EvaluacionContadores.PostEvaluacion(fallosContadores);
+                        cmd.Parameters.AddWithValue("@errorContadores", 1);
+                    }
+                    else
+                        cmd.Parameters.AddWithValue("@errorContadores", 0);
+
+                    cmd.ExecuteNonQuery();
+                    */
 
                     #endregion
                 }

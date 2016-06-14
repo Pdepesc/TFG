@@ -6,6 +6,7 @@ using System.IO;
 using Microsoft.Win32;
 using System.Security.AccessControl;
 using System.Text;
+using MySql.Data.MySqlClient;
 
 namespace EvaluacionSistema
 {
@@ -13,7 +14,7 @@ namespace EvaluacionSistema
     {
         #region EvaluacionCompleta
 
-        public static void EvaluacionCompleta()
+        public static void EvaluacionCompleta(MySqlConnection conn, Properties properties)
         {
 
         }

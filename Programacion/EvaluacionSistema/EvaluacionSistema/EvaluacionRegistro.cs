@@ -134,10 +134,32 @@ namespace EvaluacionSistema
 
         public static void PostEvaluacion(List<String[]>[] fallosRegistro)
         {
+            Console.WriteLine("PostEvaluacion de Registro....");
 
+            String path = "Informes/InformeRegistro-" + DateTime.Now.Day + "-" + DateTime.Now.Month + "-" + DateTime.Now.Year + ".txt";
+            using (StreamWriter sw = File.CreateText(path))
+            {
+                sw.WriteLine("Registros erroneos que se han corregido"); sw.WriteLine();
+
+                foreach(String[] registro in fallosRegistro[0])
+                {
+                    sw.WriteLine(registro[0] + "\\" + registro[1]);
+                }
+
+                sw.WriteLine(); sw.WriteLine("Registros erroneos que no se han podido corregir"); sw.WriteLine();
+
+                foreach (String[] registro in fallosRegistro[1])
+                {
+                    sw.WriteLine(registro[0] + "\\" + registro[1]);
+                }
+            }
+            
+            SFTPManager.Upload("Informes/", path); Console.WriteLine("Informe enviado!");
         }
 
         #endregion PostEvaluacion
+
+        #region Utilidad
 
         private static void ComprobarVersionRegistro(MySqlConnection conn, Properties properties)
         {
@@ -244,5 +266,7 @@ namespace EvaluacionSistema
             }
             return path;
         }
+
+        #endregion Utilidad
     }
 }
