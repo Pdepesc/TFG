@@ -3,9 +3,6 @@ using System.Collections;
 using System.Diagnostics;
 using System.Linq;
 using System.IO;
-using Microsoft.Win32;
-using System.Security.AccessControl;
-using System.Text;
 using MySql.Data.MySqlClient;
 
 namespace EvaluacionSistema
@@ -16,7 +13,11 @@ namespace EvaluacionSistema
 
         public static void EvaluacionCompleta(MySqlConnection conn, Properties properties)
         {
-
+            String path = "Informes/InformeContadores-" + DateTime.Now.Day + "-" + DateTime.Now.Month + "-" + DateTime.Now.Year + ".txt";
+            using (StreamWriter sw = File.CreateText(path))
+            {
+                GetReport(sw);
+            }
         }
 
         #endregion EvaluacionCompleta
@@ -30,106 +31,104 @@ namespace EvaluacionSistema
 
         #endregion PostEvaluacion
 
-        public static void GetReport()
+        public static void GetReport(StreamWriter sw)
         {
-            Console.WriteLine("--------------------------------------------------------------------------------");
-            Console.WriteLine();
-            GetCategories();
-            Console.Read();
+            sw.WriteLine("--------------------------------------------------------------------------------"); sw.WriteLine();
+            GetCategories(sw);
         }
 
         //PerformanceCounterCategory[]
-        public static void GetCategories()
+        public static void GetCategories(StreamWriter sw)
         {
             PerformanceCounterCategory[] categorias = PerformanceCounterCategory.GetCategories();
-            //foreach (PerformanceCounterCategory categoria in categorias)
-            //{
-            //    Console.WriteLine("CategoryName: " + categoria.CategoryName);
-            //    Console.WriteLine("CategoryHelp: " + categoria.CategoryHelp);
-            //    Console.WriteLine("CategoryType: " + categoria.CategoryType);     //SingleInstance / MultiInstance
-            //    Console.WriteLine("GetType (): " + categoria.GetType());
-            //    Console.WriteLine("Nº Instances: " + categoria.GetInstanceNames().Length);
-            //    if (categoria.GetInstanceNames().Length > 0)      //MultiInstance
-            //        GetInstances(categoria);
-            //    else                                              //SingleInstance
-            //        ReadCounters(categoria.GetCounters());
-            //    ReadCategory(categoria);
-            //}
-            for (int x = 0; x < 2; x++)
+            foreach (PerformanceCounterCategory categoria in categorias)
             {
-                PerformanceCounterCategory categoria = categorias[x];
-                Console.WriteLine("CategoryName: " + categoria.CategoryName);
-                Console.WriteLine("CategoryHelp: " + categoria.CategoryHelp);
-                Console.WriteLine("CategoryType: " + categoria.CategoryType);
-                Console.WriteLine("GetType (): " + categoria.GetType());
-                Console.WriteLine("Nº Instances: " + categoria.GetInstanceNames().Length);
-                if (categoria.GetInstanceNames().Length > 0)
-                    GetInstances(categoria);
-                else
-                    ReadCounters(categoria.GetCounters());
-                ReadCategory(categoria);
+                sw.WriteLine("CategoryName: " + categoria.CategoryName);
+                sw.WriteLine("CategoryHelp: " + categoria.CategoryHelp);
+                sw.WriteLine("CategoryType: " + categoria.CategoryType);     //SingleInstance / MultiInstance
+                sw.WriteLine("GetType (): " + categoria.GetType());
+                sw.WriteLine("Nº Instances: " + categoria.GetInstanceNames().Length);
+                if (categoria.GetInstanceNames().Length > 0)      //MultiInstance
+                    GetInstances(sw, categoria);
+                else                                              //SingleInstance
+                    ReadCounters(sw, categoria.GetCounters());
+                ReadCategory(sw, categoria);
             }
+            //for (int x = 0; x < 2; x++)
+            //{
+            //    PerformanceCounterCategory categoria = categorias[x];
+            //    sw.WriteLine("CategoryName: " + categoria.CategoryName);
+            //    sw.WriteLine("CategoryHelp: " + categoria.CategoryHelp);
+            //    sw.WriteLine("CategoryType: " + categoria.CategoryType);
+            //    sw.WriteLine("GetType (): " + categoria.GetType());
+            //    sw.WriteLine("Nº Instances: " + categoria.GetInstanceNames().Length);
+            //    if (categoria.GetInstanceNames().Length > 0)
+            //        GetInstances(sw, categoria);
+            //    else
+            //        ReadCounters(sw, categoria.GetCounters());
+            //    ReadCategory(sw, categoria);
+            //}
         }
 
         //PerformanceCounterCategory.Instances[]
-        private static void GetInstances(PerformanceCounterCategory categoria)
+        private static void GetInstances(StreamWriter sw, PerformanceCounterCategory categoria)
         {
             String[] instancias = categoria.GetInstanceNames();
-            //foreach (String instancia in instancias)
-            //{
-            //    Console.WriteLine("Instance '" + instancia + "'");
-            //    ReadCounters(categoria.GetCounters(instancia));
-            //}
-            for (int x = 0; x < ((instancias.Length <= 2) ? instancias.Length : 2); x++)
+            foreach (String instancia in instancias)
             {
-                String instancia = instancias[x];
-                Console.WriteLine("Instance '" + instancia + "'");
-                ReadCounters(categoria.GetCounters(instancia));
+                sw.WriteLine("Instance '" + instancia + "'");
+                ReadCounters(sw, categoria.GetCounters(instancia));
             }
+            //for (int x = 0; x < ((instancias.Length <= 2) ? instancias.Length : 2); x++)
+            //{
+            //    String instancia = instancias[x];
+            //    sw.WriteLine("Instance '" + instancia + "'");
+            //    ReadCounters(sw, categoria.GetCounters(instancia));
+            //}
         }
 
         //PerformanceCounter
-        private static void ReadCounters(PerformanceCounter[] contadores)
+        private static void ReadCounters(StreamWriter sw, PerformanceCounter[] contadores)
         {
-            Console.WriteLine("Nº Counters: " + contadores.Length);
-            //foreach (PerformanceCounter contador in contadores)
-            //{
-            //    Console.WriteLine();
-            //    Console.WriteLine("\tCounter Name: " + contador.CounterName);
-            //    Console.WriteLine("\tCategory Name: " + contador.CategoryName);
-            //    Console.WriteLine("\tCounter Help: " + contador.CounterHelp);
-            //    Console.WriteLine("\tCounter Type: " + contador.CounterType);
-            //    Console.WriteLine("\tGet Type (): " + contador.GetType());
-            //    Console.WriteLine("\tInstance Lifetime: " + contador.InstanceLifetime);
-            //    Console.WriteLine("\tInstance Name: " + contador.InstanceName);
-            //    Console.WriteLine("\tMachine Name: " + contador.MachineName);
-            //    Console.WriteLine("\tNext Value (): " + contador.NextValue());
-            //    Console.WriteLine("\tNext Value () again: " + contador.NextValue());
-            //    Console.WriteLine("\tRaw Value: " + contador.RawValue);
-            //    Console.WriteLine("\tReadOnly: " + contador.ReadOnly);
-            //    Console.WriteLine();
-            //}
-            for(int x = 0; x < ((contadores.Length <= 2) ? contadores.Length : 2); x++)
+            sw.WriteLine("Nº Counters: " + contadores.Length);
+            foreach (PerformanceCounter contador in contadores)
             {
-                PerformanceCounter contador = contadores[x];
-                Console.WriteLine();
-                Console.WriteLine("\tCounter Name: " + contador.CounterName);
-                Console.WriteLine("\tCategory Name: " + contador.CategoryName);
-                Console.WriteLine("\tCounter Help: " + contador.CounterHelp);
-                Console.WriteLine("\tCounter Type: " + contador.CounterType);
-                Console.WriteLine("\tGet Type (): " + contador.GetType());
-                Console.WriteLine("\tInstance Lifetime: " + contador.InstanceLifetime);
-                Console.WriteLine("\tInstance Name: " + contador.InstanceName);
-                Console.WriteLine("\tMachine Name: " + contador.MachineName);
-                Console.WriteLine("\tNext Value (): " + contador.NextValue());
-                Console.WriteLine("\tNext Value () again: " + contador.NextValue());
-                Console.WriteLine("\tRaw Value: " + contador.RawValue);
-                Console.WriteLine("\tReadOnly: " + contador.ReadOnly);
-                Console.WriteLine();
+                sw.WriteLine();
+                sw.WriteLine("\tCounter Name: " + contador.CounterName);
+                sw.WriteLine("\tCategory Name: " + contador.CategoryName);
+                sw.WriteLine("\tCounter Help: " + contador.CounterHelp);
+                sw.WriteLine("\tCounter Type: " + contador.CounterType);
+                sw.WriteLine("\tGet Type (): " + contador.GetType());
+                sw.WriteLine("\tInstance Lifetime: " + contador.InstanceLifetime);
+                sw.WriteLine("\tInstance Name: " + contador.InstanceName);
+                sw.WriteLine("\tMachine Name: " + contador.MachineName);
+                sw.WriteLine("\tNext Value (): " + contador.NextValue());
+                sw.WriteLine("\tNext Value () again: " + contador.NextValue());
+                sw.WriteLine("\tRaw Value: " + contador.RawValue);
+                sw.WriteLine("\tReadOnly: " + contador.ReadOnly);
+                sw.WriteLine();
             }
+            //for (int x = 0; x < ((contadores.Length <= 2) ? contadores.Length : 2); x++)
+            //{
+            //    PerformanceCounter contador = contadores[x];
+            //    sw.WriteLine();
+            //    sw.WriteLine("\tCounter Name: " + contador.CounterName);
+            //    sw.WriteLine("\tCategory Name: " + contador.CategoryName);
+            //    sw.WriteLine("\tCounter Help: " + contador.CounterHelp);
+            //    sw.WriteLine("\tCounter Type: " + contador.CounterType);
+            //    sw.WriteLine("\tGet Type (): " + contador.GetType());
+            //    sw.WriteLine("\tInstance Lifetime: " + contador.InstanceLifetime);
+            //    sw.WriteLine("\tInstance Name: " + contador.InstanceName);
+            //    sw.WriteLine("\tMachine Name: " + contador.MachineName);
+            //    sw.WriteLine("\tNext Value (): " + contador.NextValue());
+            //    sw.WriteLine("\tNext Value () again: " + contador.NextValue());
+            //    sw.WriteLine("\tRaw Value: " + contador.RawValue);
+            //    sw.WriteLine("\tReadOnly: " + contador.ReadOnly);
+            //    sw.WriteLine();
+            //}
         }
         
-        private static void ReadCategory(PerformanceCounterCategory categoria)
+        private static void ReadCategory(StreamWriter sw, PerformanceCounterCategory categoria)
         {
             InstanceDataCollectionCollection idColCol = categoria.ReadCategory();
 
@@ -141,7 +140,7 @@ namespace EvaluacionSistema
             InstanceDataCollection[] idCCValuesArray = new InstanceDataCollection[idColColValues.Count];
             idColColValues.CopyTo(idCCValuesArray, 0);
 
-            Console.WriteLine("InstanceDataCollectionCollection for \"{0}\" " +
+            sw.WriteLine("InstanceDataCollectionCollection for \"{0}\" " +
                 "has {1} elements.", categoria.CategoryName, idColCol.Count);
 
             // Display the InstanceDataCollectionCollection Keys and Values.
@@ -151,15 +150,15 @@ namespace EvaluacionSistema
             //for (index = 0; index < idCCKeysArray.Length; index++)
             for (index = 0; index < limit; index++)
             {
-                Console.WriteLine("  Next InstanceDataCollectionCollection " +
+                sw.WriteLine("  Next InstanceDataCollectionCollection " +
                     "Key is \"{0}\"", idCCKeysArray[index]);
-                ProcessInstanceDataCollection(idCCValuesArray[index]);
-                Console.WriteLine();
+                ProcessInstanceDataCollection(sw, idCCValuesArray[index]);
+                sw.WriteLine();
             }
         }
-
+        
         // Display the contents of an InstanceDataCollection.
-        public static void ProcessInstanceDataCollection(InstanceDataCollection idCol)
+        public static void ProcessInstanceDataCollection(StreamWriter sw, InstanceDataCollection idCol)
         {
 
             ICollection idColKeys = idCol.Keys;
@@ -170,7 +169,7 @@ namespace EvaluacionSistema
             InstanceData[] idColValuesArray = new InstanceData[idColValues.Count];
             idColValues.CopyTo(idColValuesArray, 0);
 
-            Console.WriteLine("  InstanceDataCollection for \"{0}\" " +
+            sw.WriteLine("  InstanceDataCollection for \"{0}\" " +
                 "has {1} elements.", idCol.CounterName, idCol.Count);
 
             // Display the InstanceDataCollection Keys and Values.
@@ -180,25 +179,26 @@ namespace EvaluacionSistema
             //for (index = 0; index < idColKeysArray.Length; index++)
             for (index = 0; index < limit; index++)
             {
-                Console.WriteLine("    Next InstanceDataCollection " +
+                sw.WriteLine("    Next InstanceDataCollection " +
                     "Key is \"{0}\"", idColKeysArray[index]);
-                ProcessInstanceDataObject(idColValuesArray[index]);
+                ProcessInstanceDataObject(sw, idColValuesArray[index]);
             }
         }
 
         // Display the contents of an InstanceData object.
-        public static void ProcessInstanceDataObject(InstanceData instData)
+        public static void ProcessInstanceDataObject(StreamWriter sw, InstanceData instData)
         {
             CounterSample sample = instData.Sample;
 
-            Console.WriteLine("    From InstanceData:\r\n      " +
+            sw.WriteLine("    From InstanceData:\r\n      " +
                 "InstanceName: {0,-31} RawValue: {1}", instData.InstanceName, instData.Sample.RawValue);
-            Console.WriteLine("    From CounterSample:\r\n      " +
+            sw.WriteLine("    From CounterSample:\r\n      " +
                 "CounterType: {0,-32} SystemFrequency: {1}\r\n" +
                 "      BaseValue: {2,-34} RawValue: {3}\r\n" +
                 "      CounterFrequency: {4,-27} CounterTimeStamp: {5}\r\n" +
                 "      TimeStamp: {6,-34} TimeStamp100nSec: {7}", sample.CounterType, sample.SystemFrequency, sample.BaseValue, sample.RawValue, sample.CounterFrequency, sample.CounterTimeStamp, sample.TimeStamp, sample.TimeStamp100nSec);
         }
+
 
         
         public static void GetCategorias()

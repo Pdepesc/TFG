@@ -21,9 +21,9 @@ namespace EvaluacionSistema
         {
             try
             {
-                Console.WriteLine("Evaluacion inicial de Hardware...");
+                Console.WriteLine("---Hardware---\r\n");
 
-                Console.WriteLine("\tAñadiendo estacion a la BBDD...");
+                Console.Write("\tAñadiendo estacion a la BBDD... ");
 
                 //Añadir esta estación a la BBDD y obtener su ID
                 string sql = "INSERT INTO Estacion(Empresa, Modelo, VersionRegistro) VALUES (@empresa, @modelo, @version)";
@@ -39,20 +39,21 @@ namespace EvaluacionSistema
                 long id = cmd.LastInsertedId;
                 properties.set("IdEstacion", id.ToString());
 
-                Console.WriteLine("\tEstacion añadida a la BBDD!");
+                Console.WriteLine("Estacion añadida!");
 
                 //Actualizar componentes hardware 100 veces
-                Console.WriteLine("\tActualizando componentes hardware...");
+                Console.Write("\tActualizando componentes hardware... ");
                 ActualizarHardware(101);
 
+                Console.WriteLine("Componentes actualizados!");
+
                 //Leer componenetes Hardware y guardarlos en la BBDD
+                Console.Write("\tAñadiendo componentes hardware a la BBDD... ");
                 sql = LeerCompoenentes(id, miPc.Hardware);
                 cmd.CommandText = sql;
                 cmd.ExecuteNonQuery();
-
-                Console.WriteLine("\tComponentes actualizados!");
-
-                Console.WriteLine("Evaluacion inicial de Hardware finalizada!");
+                
+                Console.WriteLine("Componentes añadidos!\r\n");
 
                 return true;
             }
@@ -90,12 +91,11 @@ namespace EvaluacionSistema
 
         public static List<String[]> EvaluacionCompleta(MySqlConnection conn, Properties properties)
         {
-            //TODO: Revisar metricas usadas para decidir si falla o no (p.e. usar datos de otras estaciones con mismo modelo)
             try
             {
-                Console.WriteLine("Evaluacion completa de Hardware...");
+                Console.WriteLine("---Hardware---\r\n");
 
-                Console.WriteLine("\tObteniendo datos de la BBDD...");
+                Console.Write("\tObteniendo datos de la BBDD... ");
 
                 //Obtener datos de Hardware
                 string sql = "SELECT * FROM Hardware WHERE ID_Estacion = @id";
@@ -110,8 +110,10 @@ namespace EvaluacionSistema
                 Console.WriteLine("\tConsulta realizada!");
 
                 //Actualizar componentes hardware 100 veces
-                Console.WriteLine("\tActualizando componentes hardware...");
+                Console.Write("\tActualizando componentes hardware...");
                 ActualizarHardware(101);
+                
+                Console.WriteLine("Componentes actualizados!");
 
                 return CompararComponentes(miPc.Hardware, rdr, conn, properties);
             }
@@ -124,6 +126,7 @@ namespace EvaluacionSistema
 
         private static List<String[]> CompararComponentes(IHardware[] hardwareCollection, MySqlDataReader rdr, MySqlConnection conn, Properties properties)
         {
+            Console.Write("\tRealizando diagnostico... ");
             List<String[]> fallos = new List<String[]>();
             foreach (IHardware hardware in hardwareCollection)
             {
@@ -134,10 +137,12 @@ namespace EvaluacionSistema
                         fallos.Add(new String[] { sensor.Identifier.ToString(), hardware.Name, sensor.Name });
                 }
             }
+            rdr.Close();
+            Console.WriteLine("Diagnostico realizado!\r\n");
             return fallos;
         }
 
-        //Aquie debo determinar las metricas a usar apra detectar el fallo
+        //TO-DO: Consultar nuevas métricas con la empresa para determinar si hay fallo o no
         private static bool Fallo(ISensor sensor, MySqlDataReader rdr, MySqlConnection conn, Properties properties)
         {
             String sql = "UPDATE TABLE Hardware SET Ultimo = @ultimo WHERE ID_Estacion = @id AND Identificador = @identificador";
@@ -153,6 +158,10 @@ namespace EvaluacionSistema
             float minimo_bd = rdr.GetFloat("Minimo");
             float maximo_bd = rdr.GetFloat("Maximo");
 
+            //TO-DO: QUITAR ESTE RETURN, ES SOLO PARA HACER PRUEBAS
+            return true;
+            
+            //Metrica para determinar si falla o no algun componente Hardware
             if (minimo_local < minimo_bd || maximo_local > maximo_bd || media_local < minimo_bd || media_local > maximo_bd)
                 return true;
             else
@@ -182,9 +191,10 @@ namespace EvaluacionSistema
                 foreach(String[] fallo in fallosHardware)
                 {
                     //TODO: Preguntar en la empresa si ene l informe quieren el informe completo de todos los componentes o solo los que fallan
-                    sw.WriteLine(fallo[1] + " - " + fallo[2] + " (" + fallo[0] + ")");
-                    //GetReport(FileName);
+                    sw.WriteLine(fallo[1] + " - " + fallo[2] + " (" + fallo[0] + ")"); sw.WriteLine();
                 }
+
+                GetReport(sw);
             }
 
             SFTPManager.Upload("Informes/", path); Console.WriteLine("Informe enviado!");
@@ -193,41 +203,29 @@ namespace EvaluacionSistema
         #endregion PostEvaluacion
 
         #region Reporte/Informe
-
-        //Obtiene un Reporte con toda la información necesaria (por linea de comandos)
-        public static void GetReport()
+        
+        public static void GetReport(StreamWriter sw)
         {
-            miPc.Open();
-            Console.WriteLine("--------------------------------------------------------------------------------");
-            Console.WriteLine();
-            Console.WriteLine("Sensors");
-            Console.WriteLine();
-            GetSensorsReport(miPc.Hardware, "");
-            Console.WriteLine();
-            Console.WriteLine("--------------------------------------------------------------------------------");
-            Console.WriteLine();
-            Console.WriteLine("Parameters");
-            Console.WriteLine();
-            GetParametersReport(miPc.Hardware, "");
-            Console.WriteLine();
-            Console.WriteLine("--------------------------------------------------------------------------------");
-            Console.WriteLine();
-            Console.WriteLine("Hardware");
-            Console.WriteLine();
-            GetHardwareReport(miPc.Hardware);
+            sw.WriteLine("--------------------------------------------------------------------------------"); sw.WriteLine();
+            sw.WriteLine("Sensors"); sw.WriteLine();
+            GetSensorsReport(sw, miPc.Hardware, ""); sw.WriteLine();
+            sw.WriteLine("--------------------------------------------------------------------------------"); sw.WriteLine();
+            sw.WriteLine("Parameters"); sw.WriteLine();
+            GetParametersReport(sw, miPc.Hardware, ""); sw.WriteLine();
+            sw.WriteLine("--------------------------------------------------------------------------------"); sw.WriteLine();
+            sw.WriteLine("Hardware"); sw.WriteLine();
+            GetHardwareReport(sw, miPc.Hardware);
             miPc.Close();
-            Console.Read();
         }
-
-        //Si el metodo solo se ejecuta una vez por Sensor, Sensor.Value == Sensor.Min == Sensor.Max
-        private static void GetSensorsReport(IHardware[] hardwareCollection, String prefijo)
+        
+        private static void GetSensorsReport(StreamWriter sw, IHardware[] hardwareCollection, String prefijo)
         {
             foreach (IHardware hardware in hardwareCollection)
             {
                 hardware.Update();
-                Console.WriteLine(prefijo + "|");
-                Console.WriteLine(prefijo + "+- " + hardware.Name + " (" + hardware.Identifier + ")");
-                if (hardware.SubHardware.Length > 0) GetSensorsReport(hardware.SubHardware, "|  " + prefijo);
+                sw.WriteLine(prefijo + "|");
+                sw.WriteLine(prefijo + "+- " + hardware.Name + " (" + hardware.Identifier + ")");
+                if (hardware.SubHardware.Length > 0) GetSensorsReport(sw, hardware.SubHardware, "|  " + prefijo);
                 foreach (ISensor sensor in hardware.Sensors)
                 {
                     String tab = "";
@@ -236,7 +234,7 @@ namespace EvaluacionSistema
                     float value = (float)(Math.Truncate((Convert.ToDouble(sensor.Value)) * 100.0) / 100.0);
                     float min = (float)(Math.Truncate((Convert.ToDouble(sensor.Min)) * 100.0) / 100.0);
                     float max = (float)(Math.Truncate((Convert.ToDouble(sensor.Max)) * 100.0) / 100.0);
-                    Console.WriteLine(prefijo + "|  +- " + sensor.Name + tab + ":\t" +
+                    sw.WriteLine(prefijo + "|  +- " + sensor.Name + tab + ":\t" +
                         value.ToString().PadLeft(7) + "\t" +
                         min.ToString().PadLeft(7) + "\t" +
                         max.ToString().PadLeft(7) + "\t(" +
@@ -245,39 +243,41 @@ namespace EvaluacionSistema
             }
         }
 
-        private static void GetParametersReport(IHardware[] hardwareCollection, String prefijo)
+        private static void GetParametersReport(StreamWriter sw, IHardware[] hardwareCollection, String prefijo)
         {
             foreach (IHardware hardware in hardwareCollection)
             {
                 hardware.Update();
-                Console.WriteLine(prefijo + "|");
-                Console.WriteLine(prefijo + "+- " + hardware.Name + " (" + hardware.Identifier + ")");
-                if (hardware.SubHardware.Length > 0) GetParametersReport(hardware.SubHardware, "|  " + prefijo);
+                sw.WriteLine(prefijo + "|");
+                sw.WriteLine(prefijo + "+- " + hardware.Name + " (" + hardware.Identifier + ")");
+                if (hardware.SubHardware.Length > 0) GetParametersReport(sw, hardware.SubHardware, "|  " + prefijo);
                 foreach (ISensor sensor in hardware.Sensors)
                 {
                     if (sensor.Parameters.Length > 0)
                     {
-                        Console.WriteLine(prefijo + "|  +- " + sensor.Name + " (" + sensor.Identifier + ")");
+                        sw.WriteLine(prefijo + "|  +- " + sensor.Name + " (" + sensor.Identifier + ")");
                         foreach (IParameter parametro in sensor.Parameters)
                         {
-                            Console.WriteLine(prefijo + "|  |  +- " + parametro.Name + " : " + parametro.DefaultValue + " : " + parametro.Value);
+                            sw.WriteLine(prefijo + "|  |  +- " + parametro.Name + " : " + parametro.DefaultValue + " : " + parametro.Value);
                         }
                     }
                 }
             }
         }
 
-        private static void GetHardwareReport(IHardware[] hardwareCollection)
+        private static void GetHardwareReport(StreamWriter sw, IHardware[] hardwareCollection)
         {
             foreach (IHardware hardware in hardwareCollection)
             {
-                Console.WriteLine("--------------------------------------------------------------------------------");
-                Console.WriteLine();
-                Console.WriteLine(hardware.GetReport());
+                sw.WriteLine("--------------------------------------------------------------------------------"); sw.WriteLine();
+                sw.WriteLine(hardware.GetReport());
             }
         }
 
-        //Metodos de ejemplo para acceder a toda la información (necesaria o no)
+        #endregion Reporte/Informe
+
+        #region MetodosAcceso
+
         //miPc.Hardware[]
         public static void GetHardware()
         {
@@ -379,7 +379,7 @@ namespace EvaluacionSistema
             Console.WriteLine(tab + "SoftwareValue: " + control.SoftwareValue);
         }
 
-        #endregion Reporte/Informe
+        #endregion MetodosAcceso
 
         #region Utilidad
 

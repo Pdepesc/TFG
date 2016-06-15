@@ -18,23 +18,25 @@ namespace EvaluacionSistema
         public static bool EvaluacionInicial(MySqlConnection conn, Properties properties)
         {
             try {
-                Console.WriteLine("Evaluacion inicial del Registro...");
+                Console.WriteLine("---Registro---\r\n");
 
-                Console.WriteLine("\tComprobando version del registro...");
+                Console.Write("\tComprobando version del registro... ");
 
                 ComprobarVersionRegistro(conn, properties);
 
-                Console.WriteLine("\tVersion del registro comprobada!");
+                Console.WriteLine("Version del registro comprobada!");
 
-                Console.WriteLine("\tComprobando valores del registro...");
+                Console.Write("\tComprobando valores del registro... ");
 
                 int[] fallos = ComprobarContenidoRegistro();
-                if (fallos[0] > 0)
-                    Console.WriteLine("\t" + fallos[0] + " registros erroneos corregidos!");
-                if (fallos[1] > 0)
-                    Console.WriteLine("\t" + fallos[1] + " registros erroneos no se han podido corregir!");
 
-                Console.WriteLine("Evaluacion inicial del Registro finalizada!");
+                Console.WriteLine("Valores del registro comprobados!\r\n");
+
+                if (fallos[0] > 0)
+                    Console.WriteLine("\t- " + fallos[0] + " registros erroneos corregidos!");
+                if (fallos[1] > 0)
+                    Console.WriteLine("\t- " + fallos[1] + " registros erroneos no se han podido corregir!");
+                
                 return true;
             }
             catch (Exception e)
@@ -79,15 +81,15 @@ namespace EvaluacionSistema
         {
             try
             {
-                Console.WriteLine("Evaluacion completa del Registro...");
+                Console.WriteLine("---Registro---\r\n");
 
-                Console.WriteLine("\tComprobando version del registro...");
+                Console.Write("\tComprobando version del registro... ");
 
                 ComprobarVersionRegistro(conn, properties);
 
-                Console.WriteLine("\tVersion del registro comprobada!");
+                Console.WriteLine("Version del registro comprobada!");
 
-                Console.WriteLine("\tComprobando valores del registro...");
+                Console.Write("\tComprobando valores del registro... ");
                 
                 return EvaluarContenidoRegistro();
             }
@@ -125,6 +127,7 @@ namespace EvaluacionSistema
                     registrosNoCorregidos.Add(new String[] { path, nombre });
                 }
             }
+            Console.WriteLine("Valores del registro comprobados!\r\n");
             return new List<String[]>[] { registrosCorregidos, registrosNoCorregidos };
         }
 
