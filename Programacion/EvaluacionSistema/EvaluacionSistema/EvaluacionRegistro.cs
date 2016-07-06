@@ -15,14 +15,14 @@ namespace EvaluacionSistema
     {
         #region EvaluacionInicial
 
-        public static bool EvaluacionInicial(MySqlConnection conn, Properties properties)
+        public static bool EvaluacionInicial(MySqlConnection conn)
         {
             try {
                 Console.WriteLine("---Registro---\r\n");
 
                 Console.Write("\tComprobando version del registro... ");
 
-                ComprobarVersionRegistro(conn, properties);
+                ComprobarVersionRegistro(conn);
 
                 Console.WriteLine("Version del registro comprobada!");
 
@@ -32,11 +32,8 @@ namespace EvaluacionSistema
 
                 Console.WriteLine("Valores del registro comprobados!\r\n");
 
-                if (fallos[0] > 0)
-                    Console.WriteLine("\t- " + fallos[0] + " registros erroneos corregidos!");
-                if (fallos[1] > 0)
-                    Console.WriteLine("\t- " + fallos[1] + " registros erroneos no se han podido corregir!");
-                
+                Console.WriteLine("{0} registro erróneos - {1} corregidos - {2} sin corregir", fallos[0] + fallos[1], fallos[0], fallos[1]);
+                                
                 return true;
             }
             catch (Exception e)
@@ -56,20 +53,25 @@ namespace EvaluacionSistema
             int fallosCorregidos = 0;
             int fallosNoCorregidos = 0;
 
-            foreach(XmlNode nodo in value_nodes)
+            if(value_nodes.Count != 0)
             {
-                path = GetPath(nodo);
-                nombre = nodo.Attributes.Item(0).Value;
-                valor = nodo.Attributes.Item(1).Value;
-                tipo = nodo.Attributes.Item(2).Value;
-                try {
-                    if (FalloRegistro(path, nombre, valor, tipo)) fallosCorregidos++;
-                }
-                catch (Exception e)
+                foreach (XmlNode nodo in value_nodes)
                 {
-                    fallosNoCorregidos++;
+                    path = GetPath(nodo);
+                    nombre = nodo.Attributes.Item(0).Value;
+                    valor = nodo.Attributes.Item(1).Value;
+                    tipo = nodo.Attributes.Item(2).Value;
+                    try
+                    {
+                        if (FalloRegistro(path, nombre, valor, tipo)) fallosCorregidos++;
+                    }
+                    catch (Exception e)
+                    {
+                        fallosNoCorregidos++;
+                    }
                 }
             }
+            
             return new int[] { fallosCorregidos, fallosNoCorregidos};
         }
 
@@ -77,7 +79,7 @@ namespace EvaluacionSistema
 
         #region EvaluacionCompleta
 
-        public static List<String[]>[] EvaluacionCompleta(MySqlConnection conn, Properties properties)
+        public static bool EvaluacionCompleta(MySqlConnection conn)
         {
             try
             {
@@ -85,18 +87,31 @@ namespace EvaluacionSistema
 
                 Console.Write("\tComprobando version del registro... ");
 
-                ComprobarVersionRegistro(conn, properties);
+                ComprobarVersionRegistro(conn);
 
                 Console.WriteLine("Version del registro comprobada!");
 
                 Console.Write("\tComprobando valores del registro... ");
-                
-                return EvaluarContenidoRegistro();
+
+                //List<String[ruta, nombreClave]>[Corregidos, NoCorregidos]
+                List<String[]>[] fallos = EvaluarContenidoRegistro();
+
+                Console.WriteLine("Valores del registro comprobados!\r\n");
+
+                Console.WriteLine("\t{0} registro erróneos - {1} corregidos - {2} sin corregir", fallos[0].Count + fallos[1].Count, fallos[0].Count, fallos[1].Count);
+
+                if ((fallos[0].Count > 0) || (fallos[1].Count > 0))
+                {
+                    Informe(fallos);
+                    return true;
+                }
+                else
+                    return false;
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
-                return null;
+                return false;
             }
         }
 
@@ -127,17 +142,17 @@ namespace EvaluacionSistema
                     registrosNoCorregidos.Add(new String[] { path, nombre });
                 }
             }
-            Console.WriteLine("Valores del registro comprobados!\r\n");
+
             return new List<String[]>[] { registrosCorregidos, registrosNoCorregidos };
         }
 
         #endregion EvaluacionCompleta
 
-        #region PostEvaluacion
+        #region Informe
 
-        public static void PostEvaluacion(List<String[]>[] fallosRegistro)
+        public static void Informe(List<String[]>[] fallosRegistro)
         {
-            Console.WriteLine("PostEvaluacion de Registro....");
+            Console.Write("\tPostEvaluacion de Registro....");
 
             String path = "Informes/InformeRegistro-" + DateTime.Now.Day + "-" + DateTime.Now.Month + "-" + DateTime.Now.Year + ".txt";
             using (StreamWriter sw = File.CreateText(path))
@@ -157,21 +172,21 @@ namespace EvaluacionSistema
                 }
             }
             
-            SFTPManager.Upload("Informes/", path); Console.WriteLine("Informe enviado!");
+            Console.WriteLine("Informe de Registro hecho!");
         }
 
-        #endregion PostEvaluacion
+        #endregion Informe
 
         #region Utilidad
 
-        private static void ComprobarVersionRegistro(MySqlConnection conn, Properties properties)
+        private static void ComprobarVersionRegistro(MySqlConnection conn)
         {
-            int versionLocal = int.Parse(properties.get("VersionRegistro"));
+            int versionLocal = int.Parse(Util.ReadSetting("VersionRegistro"));
 
             string query = "SELECT Version, UrlDescarga FROM Registro WHERE Modelo = @modelo";
             MySqlCommand cmd = new MySqlCommand(query, conn);
 
-            cmd.Parameters.AddWithValue("@modelo", properties.get("Modelo"));
+            cmd.Parameters.AddWithValue("@modelo", Util.ReadSetting("Modelo"));
 
             MySqlDataReader rdr = cmd.ExecuteReader();
 
@@ -186,14 +201,14 @@ namespace EvaluacionSistema
             {
                 Console.WriteLine("\t\tActualizando el fichero del registro...");
 
-                SFTPManager.Download(url, "Registro.xml");
+                Util.SFTPDownload(url, "Registro.xml");
 
-                properties.set("VersionRegistro", versionBD.ToString());
+                Util.AddUpdateAppSettings("VersionRegistro", versionBD.ToString());
 
                 query = "UPDATE Estacion SET VersionRegistro = @version WHERE ID = @id";
                 cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@version", versionBD.ToString());
-                cmd.Parameters.AddWithValue("@id", properties.get("IdEstacion"));
+                cmd.Parameters.AddWithValue("@id", Util.ReadSetting("IdEstacion"));
                 cmd.ExecuteNonQuery();
 
                 Console.WriteLine("\t\tFichero del registro actualizado!");
@@ -206,49 +221,49 @@ namespace EvaluacionSistema
             switch (tipo)
             {
                 case "String":
-                    if (valor.CompareTo(Util.SanitizeXmlString((String)registro)) != 0)
+                    if (registro != null && valor.CompareTo(Util.SanitizeXmlString((String)registro)) != 0)
                     {
                         Registry.SetValue(path, nombre, valor, RegistryValueKind.String);
                         return true;
                     }
                     break;
                 case "ExpandString":
-                    if (Environment.ExpandEnvironmentVariables(valor).CompareTo(Util.SanitizeXmlString((String)registro)) != 0)
+                    if (registro != null && Environment.ExpandEnvironmentVariables(valor).CompareTo(Util.SanitizeXmlString((String)registro)) != 0)
                     {
                         Registry.SetValue(path, nombre, valor, RegistryValueKind.ExpandString);
                         return true;
                     }
                     break;
                 case "MultiString":
-                    if (valor.CompareTo(String.Join(" ", (String[])registro)) != 0)
+                    if (registro != null && valor.CompareTo(String.Join(" ", (String[])registro)) != 0)
                     {
                         Registry.SetValue(path, nombre, valor.Split(' '), RegistryValueKind.MultiString);
                         return true;
                     }
                     break;
                 case "Binary":
-                    if (valor.CompareTo(Convert.ToBase64String((byte[])registro)) != 0)
+                    if (registro != null && valor.CompareTo(Convert.ToBase64String((byte[])registro)) != 0)
                     {
                         Registry.SetValue(path, nombre, Convert.FromBase64String(valor), RegistryValueKind.Binary);
                         return true;
                     }
                     break;
                 case "None":
-                    if (valor.CompareTo(Convert.ToBase64String((byte[])registro)) != 0)
+                    if (registro != null && valor.CompareTo(Convert.ToBase64String((byte[])registro)) != 0)
                     {
                         Registry.SetValue(path, nombre, Convert.FromBase64String(valor), RegistryValueKind.None);
                         return true;
                     }
                     break;
                 case "DWord":
-                    if (valor.CompareTo(((Int32)registro).ToString()) != 0)
+                    if (registro != null && valor.CompareTo(((Int32)registro).ToString()) != 0)
                     {
                         Registry.SetValue(path, nombre, Int32.Parse(valor), RegistryValueKind.DWord);
                         return true;
                     }
                     break;
                 case "QWord":
-                    if (valor.CompareTo(((Int64)registro).ToString()) != 0)
+                    if (registro != null && valor.CompareTo(((Int64)registro).ToString()) != 0)
                     {
                         Registry.SetValue(path, nombre, Int64.Parse(valor), RegistryValueKind.QWord);
                         return true;

@@ -17,7 +17,7 @@ namespace EvaluacionSistema
         
         #region EvaluacionInicial
 
-        public static bool EvaluacionInicial(MySqlConnection conn, Properties properties)
+        public static bool EvaluacionInicial(MySqlConnection conn)
         {
             try
             {
@@ -31,13 +31,13 @@ namespace EvaluacionSistema
                 MySqlCommand cmd = new MySqlCommand(sql, conn);
                 cmd.Prepare();
 
-                cmd.Parameters.AddWithValue("@empresa", properties.get("Empresa"));
-                cmd.Parameters.AddWithValue("@modelo", properties.get("Modelo"));
-                cmd.Parameters.AddWithValue("@version", properties.get("VersionRegistro"));
+                cmd.Parameters.AddWithValue("@empresa", Util.ReadSetting("Empresa"));
+                cmd.Parameters.AddWithValue("@modelo", Util.ReadSetting("Modelo"));
+                cmd.Parameters.AddWithValue("@version", Util.ReadSetting("VersionRegistro"));
                 cmd.ExecuteNonQuery();
 
                 long id = cmd.LastInsertedId;
-                properties.set("IdEstacion", id.ToString());
+                Util.AddUpdateAppSettings("IdEstacion", id.ToString());
 
                 Console.WriteLine("Estacion añadida!");
 
@@ -89,7 +89,7 @@ namespace EvaluacionSistema
 
         #region EvaluacionCompleta
 
-        public static List<String[]> EvaluacionCompleta(MySqlConnection conn, Properties properties)
+        public static bool EvaluacionCompleta(MySqlConnection conn)
         {
             try
             {
@@ -103,7 +103,7 @@ namespace EvaluacionSistema
                 MySqlCommand cmd = new MySqlCommand(sql, conn);
                 cmd.Prepare();
 
-                cmd.Parameters.AddWithValue("@id", properties.get("IdEstacion"));
+                cmd.Parameters.AddWithValue("@id", Util.ReadSetting("IdEstacion"));
 
                 MySqlDataReader rdr = cmd.ExecuteReader();
                 
@@ -115,16 +115,25 @@ namespace EvaluacionSistema
                 
                 Console.WriteLine("Componentes actualizados!");
 
-                return CompararComponentes(miPc.Hardware, rdr, conn, properties);
+                //List<String[Identificador, componente, sensor]>
+                List<String[]> fallos = CompararComponentes(miPc.Hardware, rdr, conn);
+
+                if (fallos.Count > 0)
+                {
+                    Informe(fallos);
+                    return true;
+                }
+                else
+                    return false;
             }
             catch (MySqlException ex)
             {
                 Console.WriteLine("Error: {0}", ex.ToString());
-                return null;
+                return false;
             }
         }
 
-        private static List<String[]> CompararComponentes(IHardware[] hardwareCollection, MySqlDataReader rdr, MySqlConnection conn, Properties properties)
+        private static List<String[]> CompararComponentes(IHardware[] hardwareCollection, MySqlDataReader rdr, MySqlConnection conn)
         {
             Console.Write("\tRealizando diagnostico... ");
             List<String[]> fallos = new List<String[]>();
@@ -133,7 +142,7 @@ namespace EvaluacionSistema
                 foreach (ISensor sensor in hardware.Sensors)
                 {
                     rdr.Read();
-                    if (Fallo(sensor, rdr, conn, properties))
+                    if (Fallo(sensor, rdr, conn))
                         fallos.Add(new String[] { sensor.Identifier.ToString(), hardware.Name, sensor.Name });
                 }
             }
@@ -142,14 +151,16 @@ namespace EvaluacionSistema
             return fallos;
         }
 
-        //TO-DO: Consultar nuevas métricas con la empresa para determinar si hay fallo o no
-        private static bool Fallo(ISensor sensor, MySqlDataReader rdr, MySqlConnection conn, Properties properties)
+        //TO-DO: Aplicar nuevas métricas para determinar si hay fallo o no
+          //Establecer el umbral con un porcentaje
+          //Hacer medias con todas las estaciones del mismo modelo
+        private static bool Fallo(ISensor sensor, MySqlDataReader rdr, MySqlConnection conn)
         {
             String sql = "UPDATE TABLE Hardware SET Ultimo = @ultimo WHERE ID_Estacion = @id AND Identificador = @identificador";
             MySqlCommand cmd = new MySqlCommand(sql, conn);
             cmd.Prepare();
 
-            cmd.Parameters.AddWithValue("@id", properties.get("IdEstacion"));
+            cmd.Parameters.AddWithValue("@id", Util.ReadSetting("IdEstacion"));
 
             float minimo_local = (float)(Math.Truncate((Convert.ToDouble(sensor.Min)) * 100.0) / 100.0);
             float maximo_local = (float)(Math.Truncate((Convert.ToDouble(sensor.Max)) * 100.0) / 100.0);
@@ -157,9 +168,6 @@ namespace EvaluacionSistema
             float ultimo_local = (float)(Math.Truncate((Convert.ToDouble(sensor.Values.ElementAt<SensorValue>(sensor.Values.Count() - 1).Value)) * 100.0) / 100.0);
             float minimo_bd = rdr.GetFloat("Minimo");
             float maximo_bd = rdr.GetFloat("Maximo");
-
-            //TO-DO: QUITAR ESTE RETURN, ES SOLO PARA HACER PRUEBAS
-            return true;
             
             //Metrica para determinar si falla o no algun componente Hardware
             if (minimo_local < minimo_bd || maximo_local > maximo_bd || media_local < minimo_bd || media_local > maximo_bd)
@@ -177,11 +185,11 @@ namespace EvaluacionSistema
 
         #endregion EvaluacionCompleta
 
-        #region PostEvaluacion
+        #region Informe
 
-        public static void PostEvaluacion(List<String[]> fallosHardware)
+        public static void Informe(List<String[]> fallosHardware)
         {
-            Console.WriteLine("PostEvaluacion de HArdware....");
+            Console.Write("\tPostEvaluacion de Hardware....");
 
             String path = "Informes/InformeHardware-" + DateTime.Now.Day + "-" + DateTime.Now.Month + "-" + DateTime.Now.Year + ".txt";
             using (StreamWriter sw = File.CreateText(path))
@@ -190,19 +198,13 @@ namespace EvaluacionSistema
 
                 foreach(String[] fallo in fallosHardware)
                 {
-                    //TODO: Preguntar en la empresa si ene l informe quieren el informe completo de todos los componentes o solo los que fallan
                     sw.WriteLine(fallo[1] + " - " + fallo[2] + " (" + fallo[0] + ")"); sw.WriteLine();
                 }
-
                 GetReport(sw);
             }
 
-            SFTPManager.Upload("Informes/", path); Console.WriteLine("Informe enviado!");
+            Console.WriteLine("Informe de Hardware hecho!");
         }
-
-        #endregion PostEvaluacion
-
-        #region Reporte/Informe
         
         public static void GetReport(StreamWriter sw)
         {

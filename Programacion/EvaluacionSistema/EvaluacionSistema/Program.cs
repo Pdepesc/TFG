@@ -5,19 +5,26 @@ using System.Text;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 using Microsoft.Win32;
+using System.Configuration;
+using System.Diagnostics;
 
 namespace EvaluacionSistema
 {
     class Program
     {
-        private static String cs = @"server=192.168.1.10;userid=paris;password=paris;database=TFG";
-
         static void Main(string[] args)
         {
             Console.WriteLine("Iniciando programa...\r\n");
 
-            Properties properties = new Properties("Properties.properties");
-            MySqlConnection conn = new MySqlConnection(cs);
+            //Pruebas
+
+            //EvaluacionEventos.ReadLog();
+            //Process.Start("schtasks.exe");
+            //EvaluacionEventos.EvaluacionCompleta();
+            //Console.Read();
+            //return;
+            
+            MySqlConnection conn = new MySqlConnection(ConfigurationManager.ConnectionStrings["RemoteBBDD"].ConnectionString);
             
             try
             {
@@ -28,19 +35,18 @@ namespace EvaluacionSistema
 
                 Console.WriteLine("¡Conexion a la BBDD correcta!\r\n\r\n");
                 
-                if (properties.get("TipoEvaluacion").CompareTo("Inicial") == 0)
+                if (ConfigurationManager.AppSettings["ModoEvaluacion"].ToString().CompareTo("Inicial") == 0)
                 {
                     #region EvaluacionInicial
 
                     Console.WriteLine("Iniciando evaluacion inicial de la estacion\r\n");
-                    
+
                     MySqlTransaction sqltransaction = conn.BeginTransaction();
 
-                    if (EvaluacionHardware.EvaluacionInicial(conn, properties) && EvaluacionRegistro.EvaluacionInicial(conn, properties))
+                    if (EvaluacionHardware.EvaluacionInicial(conn) && EvaluacionRegistro.EvaluacionInicial(conn))
                     {
                         sqltransaction.Commit();
-                        properties.set("TipoEvaluacion", "Completa");
-                        properties.Save();
+                        Util.AddUpdateAppSettings("ModoEvaluacion", "Completa");
 
                         Console.WriteLine("\r\n\r\nEvaluacion inicial finalizada con éxito!");
                     }
@@ -57,100 +63,103 @@ namespace EvaluacionSistema
                 {
                     #region EvaluacionCompleta
 
-                    Console.Write("Iniciando evaluacion completa de la estacion");
+                    Console.Write("Iniciando evaluacion completa de la estacion...");
 
-                    //List<String[Identificador, componente, sensor]>
-                    List<String[]> fallosHardware = EvaluacionHardware.EvaluacionCompleta(conn, properties);
+                    ResultadoEvaluacion resultado = new ResultadoEvaluacion(EvaluacionHardware.EvaluacionCompleta(conn),
+                        EvaluacionRegistro.EvaluacionCompleta(conn),
+                        EvaluacionEventos.EvaluacionCompleta(conn));
+
+                    Console.WriteLine("\tEvaluacion completa finalizada!");
                     
-                    //List<String[ruta, nombreClave]>[Corregidos, NoCorregidos]
-                    List<String[]>[] fallosRegistro = EvaluacionRegistro.EvaluacionCompleta(conn, properties);
-
-                    //TO-DO: Hacer evaluacion completa de contadores y establecer metricas para detectar fallos
-                    //var fallosContadores = EvaluacionContadores.EvaluacionCompleta(conn, properties);
-
-                    #endregion
+                    #endregion EvaluacionCompleta
 
                     #region PostEvaluacion
+                    
+                    Util.EnviarInformes();
+
+                    //Añadir registro a la tabla Evaluacion
+                    //Añadir registro a la tabla Incidencia (si la hay) -- Cambiar esta tabla por la tabla Evento (IdEvento, Nivel, Origen, Categoria )
+
+                    //Programar reejecucion del programa
+                    //Programar ejecucion de scripts (y asociarlos al evento ocurrido para que en futuras ocasiones se ejecuten solos - si la empresa lo aprueba)
+
+                    #region consultaAñadirEvaluacion
+                    /*
+                    String sql = "INSERT INTO Evaluacion(ID_Estacion, Fecha, ErrorHardware, ErrorRegistro, ErrorContadores) " + 
+                            "VALUES (@idestacion, @fecha, @errorHardware, @errorRegistro, @errorContadores)";
+                    MySqlCommand cmd = new MySqlCommand(sql, conn);
+                    cmd.Prepare();
+
+                    cmd.Parameters.AddWithValue("@idestacion", properties.get("IdEstacion"));
+                    cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
 
                     if (fallosHardware != null && fallosHardware.Count > 0)
+                    {
                         EvaluacionHardware.PostEvaluacion(fallosHardware);
-
-                    if ((fallosRegistro[0] != null && fallosRegistro[0].Count > 0) || (fallosRegistro[1] != null && fallosRegistro[1].Count > 0))
-                        EvaluacionRegistro.PostEvaluacion(fallosRegistro);
-
-
-
-                        //Enviar informes (si hay errores)
-                        //Añadir registro a la tabla Evaluacion
-                        //Añadir registro a la tabla Incidencia (si la hay)
-                        //Ejecutar scripts
-
-                        //Incidencia incidencia = new Incidencia(fallosHardware, fallosRegistro, fallosContadores);
-                        
-                        //AÑADIR NUEVA INCIDENCIA A LA BBDD
-                        //COMPROBAR SI ESTA RESUELTA O NO
-                        //ACTUAR EN CONSECUENCIA
-                        
-
-                        //PUEDE QUE LOS METODOS POSTEVALUACION LOS JUNTE EN UNA SOLA CLASE LLAMADA POSTEVALUACION/INCIDENCIA
-                        //QUE ALMACENE TODOS LOS OBJETOS DEVUELVOS POR LOS METODOS EVALUACIONCOMPLETA Y LOS PROCESE
-                        //  SE ENCARGARÍA DE ENVIAR INFORMES AL SERVIDOR Y APLICAR SCRIPTS O SOLUCIONES
-
-                        /*
-                        String sql = "INSERT INTO Evaluacion(ID_Estacion, Fecha, ErrorHardware, ErrorRegistro, ErrorContadores) " + 
-                                "VALUES (@idestacion, @fecha, @errorHardware, @errorRegistro, @errorContadores)";
-                        MySqlCommand cmd = new MySqlCommand(sql, conn);
-                        cmd.Prepare();
-
-                        cmd.Parameters.AddWithValue("@idestacion", properties.get("IdEstacion"));
-                        cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
-
-                        if (fallosHardware != null && fallosHardware.Count > 0)
-                        {
-                            EvaluacionHardware.PostEvaluacion(fallosHardware);
-                            cmd.Parameters.AddWithValue("@errorHardware", 1);
-                        }
-                        else
-                            cmd.Parameters.AddWithValue("@errorHardware", 0);
-
-                        if (fallosRegistro[0].Count > 0 || fallosRegistro[1].Count > 0)
-                        {
-                            EvaluacionRegistro.PostEvaluacion(fallosRegistro);
-                            cmd.Parameters.AddWithValue("@errorRegistro", 1);
-                        }
-                        else
-                            cmd.Parameters.AddWithValue("@errorHardware", 0);
-
-                        if(fallosContadores > 0)
-                        {
-                            EvaluacionContadores.PostEvaluacion(fallosContadores);
-                            cmd.Parameters.AddWithValue("@errorContadores", 1);
-                        }
-                        else
-                            cmd.Parameters.AddWithValue("@errorContadores", 0);
-
-                        cmd.ExecuteNonQuery();
-                        */
-
-                        #endregion
+                        cmd.Parameters.AddWithValue("@errorHardware", 1);
                     }
+                    else
+                        cmd.Parameters.AddWithValue("@errorHardware", 0);
 
-            } catch (MySqlException ex)
+                    if (fallosRegistro[0].Count > 0 || fallosRegistro[1].Count > 0)
+                    {
+                        EvaluacionRegistro.PostEvaluacion(fallosRegistro);
+                        cmd.Parameters.AddWithValue("@errorRegistro", 1);
+                    }
+                    else
+                        cmd.Parameters.AddWithValue("@errorHardware", 0);
+
+                    if(fallosContadores > 0)
+                    {
+                        EvaluacionContadores.PostEvaluacion(fallosContadores);
+                        cmd.Parameters.AddWithValue("@errorContadores", 1);
+                    }
+                    else
+                        cmd.Parameters.AddWithValue("@errorContadores", 0);
+
+                    cmd.ExecuteNonQuery();
+                    */
+
+                    #endregion consultaAñadirEvaluacion
+
+                    #endregion PostEvaluacion
+                }
+
+            }
+            catch (MySqlException ex)
             {
-                //TO-DO: ¿Qué hacer si no hay conexion a la BBDD?
-                    //Ejecutar script para intentar arreglar la conexion
-                    //Reejecutar el programa una vez arreglado el fallo
-                    //Quitar el mensaje de abajo o cambiarlo a un log o yo k se
+                //Si no hay conexion a la BBDD remota usamos la local
+                conn = new MySqlConnection(ConfigurationManager.ConnectionStrings["LocalBBDD"].ConnectionString);
+                conn.Open();
+                //Revisar los metodos para que no se conecten al servidor y, cambiar las funciones que dependan de la red o quitarlas
+
+                /*
+                 SI NO HAY CONEXION:
+                  - HARDWARE: COMPARACION CON BBDD LOCAL
+                  - REGISTRO: OMITIR COMPROBACION DE ULTIMA VERSION Y USAR FICHERO LOCAL
+                  - EVENTOS: BUSCAR ERRORES Y SI TIENEN SOLUCION EN LOCAL, SINO NO HACER NADA
+                  - INFORMES: NO ENVIAR
+                  - RESULTADOS EVALUACION QUE HABRIA QUE AÑADIR A LA BBDD A MODO DE HISTORIAL: NO ENVIAR
+                  (VENDRIA A EQUIVALER A CAPAR TODAS LAS FUNCIONES QUE DEPENDAN DE RED Y SUSTITUIRLAS POR LOCAL O QUITARLAS)
+                */
                 Console.WriteLine("¡Conexion a la BBDD fallida!\r\n");
                 Console.WriteLine("Error: {0}", ex.ToString());
                 return;
             }
+            finally
+            {
+                Console.Write("Cerrando conexion con la BBDD... ");
 
-            Console.Write("Cerrando conexion con la BBDD... ");
+                conn.Close();
 
-            conn.Close();
+                Console.WriteLine("Conexion cerrada!");
 
-            Console.WriteLine("Conexion cerrada!\r\n\r\nFin del programa!");
+                //Util.ProgramarReejecucion();
+                //Util.ProgramarScripts();
+                
+                Console.WriteLine("\r\nFin del programa!");
+            }
+            
             Console.Read();
         }
     }

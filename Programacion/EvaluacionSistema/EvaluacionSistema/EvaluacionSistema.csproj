@@ -41,6 +41,7 @@
       <HintPath>..\..\OpenHardwareMonitorLib.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -50,17 +51,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EvaluacionEventos.cs" />
     <Compile Include="EvaluacionHardware.cs" />
     <Compile Include="EvaluacionRegistro.cs" />
-    <Compile Include="EvaluacionContadores.cs" />
+    <Compile Include="ResultadoEvaluacion.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="Properties.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SFTPManager.cs" />
     <Compile Include="Util.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="app.manifest">
       <SubType>Designer</SubType>
     </None>

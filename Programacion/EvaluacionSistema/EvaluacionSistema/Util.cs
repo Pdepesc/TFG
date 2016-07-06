@@ -7,12 +7,114 @@ using System.Xml.Linq;
 using System.Xml;
 using Microsoft.Win32;
 using System.IO;
+using System.Configuration;
+using Renci.SshNet;
+using System.Diagnostics;
 
 namespace EvaluacionSistema
 {
     class Util
     {
-        #region ObtenerRegistro
+        #region SFTPManager
+
+        public static void SFTPDownload(String remoteUrl, String localDestinationFilename)
+        {
+            String host = ConfigurationManager.ConnectionStrings["SftpHost"].ConnectionString;
+            String port = ConfigurationManager.ConnectionStrings["SftpPort"].ConnectionString;
+            String user = ConfigurationManager.ConnectionStrings["SftpUser"].ConnectionString;
+            String pass = ConfigurationManager.ConnectionStrings["SftpPassword"].ConnectionString;
+            String workDir = ConfigurationManager.ConnectionStrings["SftpWorkingDirectory"].ConnectionString;
+
+            using (var sftp = new SftpClient(host, int.Parse(port), user, pass))
+            {
+                sftp.Connect();
+
+                using (var file = File.OpenWrite(localDestinationFilename))
+                {
+                    sftp.DownloadFile(workDir + remoteUrl, file);
+                }
+
+                sftp.Disconnect();
+            }
+        }
+
+        public static void SFTPUpload(String remoteDirectory, String localFilename)
+        {
+            String host = ConfigurationManager.ConnectionStrings["SftpHost"].ConnectionString;
+            String port = ConfigurationManager.ConnectionStrings["SftpPort"].ConnectionString;
+            String user = ConfigurationManager.ConnectionStrings["SftpUser"].ConnectionString;
+            String pass = ConfigurationManager.ConnectionStrings["SftpPassword"].ConnectionString;
+            String workDir = ConfigurationManager.ConnectionStrings["SftpWorkingDirectory"].ConnectionString;
+
+            using (var client = new SftpClient(host, int.Parse(port), user, pass))
+            {
+                client.Connect();
+                //Console.WriteLine("Connected to {0}", host);
+
+                client.ChangeDirectory(workDir + remoteDirectory);
+                //Console.WriteLine("Changed directory to {0}", remoteDirectory);
+
+                /*
+                var listDirectory = client.ListDirectory(SFTPManager.work_dir + remoteDirectory);
+                Console.WriteLine("Listing directory:");
+                foreach (var fi in listDirectory)
+                {
+                    Console.WriteLine(" - " + fi.Name);
+                }*/
+
+                using (var fileStream = new FileStream(localFilename, FileMode.Open))
+                {
+                    Console.WriteLine("Uploading {0} ({1:N0} bytes)",
+                                        localFilename, fileStream.Length);
+                    client.BufferSize = 4 * 1024; // bypass Payload error large files
+                    client.UploadFile(fileStream, Path.GetFileName(localFilename));
+                }
+
+                client.Disconnect();
+            }
+        }
+
+        #endregion SFTPManager
+
+        #region ConfigurationSettings
+
+        public static String ReadSetting(String key)
+        {
+            try
+            {
+                var appSettings = ConfigurationManager.AppSettings;
+                return appSettings[key] ?? null;
+            }
+            catch (ConfigurationErrorsException)
+            {
+                Console.WriteLine("Error reading app settings");
+                return null;
+            }
+        }
+
+        public static void AddUpdateAppSettings(string key, string value)
+        {
+            try
+            {
+                var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                var settings = configFile.AppSettings.Settings;
+                if (settings[key] == null)
+                    settings.Add(key, value);
+                else
+                    settings[key].Value = value;
+                configFile.Save(ConfigurationSaveMode.Modified);
+                ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
+            }
+            catch (ConfigurationErrorsException)
+            {
+                Console.WriteLine("Error writing app settings");
+            }
+        }
+
+        #endregion ConfigurationSettings
+
+        #region GetRegistryKeys
+
         public static void GetRegistro()
         {
             XElement registro = new XElement("registro");
@@ -147,6 +249,56 @@ namespace EvaluacionSistema
             );
         }
 
-        #endregion ObtenerRegistro
+        #endregion GetRegistryKeys
+
+        #region Informes
+
+        public static void EnviarInformes()
+        {
+            string[] fileEntries = Directory.GetFiles(Directory.GetCurrentDirectory() + "/Informes");
+            foreach (string fileName in fileEntries)
+            {
+                Util.SFTPUpload("Informes/", fileName);
+                if (ConfigurationManager.AppSettings["AlmacenarInformes"].CompareTo("No") == 0)
+                    File.Delete(fileName);
+            }
+        }
+
+        #endregion Informes
+
+        #region Comandos
+
+        public static void ProgramarReejecucion()
+        {
+
+            //Usar Process.Start("schtasks.exe", "argumentos");
+            //Ejemplo:
+            Process process = new Process();
+            process.StartInfo.FileName = "schtasks.exe.exe";
+            process.StartInfo.Arguments = "/create /sc once";//este comando esta mal, hay que revisarlo
+            process.StartInfo.CreateNoWindow = true;
+            process.Start();
+
+
+            //usar comando SCHTASK con alguna de las cosas de abajo para programar la reejecucion de este programa
+
+            //Process.Start("nombre programa o fichero con su ruta","argumentos que se pasarian por linea de comandos");
+            //ProcessStartInfo psi = new ProcessStartInfo(); Process.Start(psi);
+
+            //Process process = new Process();
+            //ProcessStartInfo startInfo = new ProcessStartInfo();
+            //startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            //startInfo.FileName = "cmd.exe";
+            //startInfo.Arguments = "/C copy /b Image1.jpg + Archive.rar Image2.jpg";
+            //process.StartInfo = startInfo;
+            //process.Start();
+        }
+
+        public static void ProgramarScripts()
+        {
+
+        }
+        #endregion
+
     }
 }
