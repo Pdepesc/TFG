@@ -16,16 +16,17 @@ namespace EvaluacionSistema
         {
             Console.WriteLine("Iniciando programa...\r\n");
 
+            MySqlConnection conn = new MySqlConnection(ConfigurationManager.ConnectionStrings["RemoteBBDD"].ConnectionString);
+
             //Pruebas
 
             //EvaluacionEventos.ReadLog();
             //Process.Start("schtasks.exe");
-            //EvaluacionEventos.EvaluacionCompleta();
-            //Console.Read();
-            //return;
-            
-            MySqlConnection conn = new MySqlConnection(ConfigurationManager.ConnectionStrings["RemoteBBDD"].ConnectionString);
-            
+            conn.Open();
+            EvaluacionEventos.EvaluacionCompleta(conn);
+            Console.Read();
+            return;
+
             try
             {
                 Console.Write("Probando conexion con la BBDD... ");
@@ -77,12 +78,9 @@ namespace EvaluacionSistema
                     
                     Util.EnviarInformes();
 
-                    //Añadir registro a la tabla Evaluacion
-                    //Añadir registro a la tabla Incidencia (si la hay) -- Cambiar esta tabla por la tabla Evento (IdEvento, Nivel, Origen, Categoria )
+                    //Lo de programar reejecucion y hacer la consulta para añadir registro podria ir en el bloque finally (despues del try-catch)
 
-                    //Programar reejecucion del programa
-                    //Programar ejecucion de scripts (y asociarlos al evento ocurrido para que en futuras ocasiones se ejecuten solos - si la empresa lo aprueba)
-
+                    //Añadir registro a la tabla Evaluacion (Cambiar los campos de tipo bool por tipo int en los que ponga el Nº de errores pudeindo ser 0)
                     #region consultaAñadirEvaluacion
                     /*
                     String sql = "INSERT INTO Evaluacion(ID_Estacion, Fecha, ErrorHardware, ErrorRegistro, ErrorContadores) " + 
@@ -122,6 +120,8 @@ namespace EvaluacionSistema
 
                     #endregion consultaAñadirEvaluacion
 
+                    //Programar reejecucion del programa
+
                     #endregion PostEvaluacion
                 }
 
@@ -141,6 +141,9 @@ namespace EvaluacionSistema
                   - INFORMES: NO ENVIAR
                   - RESULTADOS EVALUACION QUE HABRIA QUE AÑADIR A LA BBDD A MODO DE HISTORIAL: NO ENVIAR
                   (VENDRIA A EQUIVALER A CAPAR TODAS LAS FUNCIONES QUE DEPENDAN DE RED Y SUSTITUIRLAS POR LOCAL O QUITARLAS)
+
+                  SI PONGO METODOS ESPECIFICOS PARA FUNCIONAR SIN CONEXION HABRA QUE ACTUALIZAR LOS DE QUE SÍ TIENEN CONEXION
+                  PARA QUE ACTUALICEN LAS COSAS DE LA BBDD LOCAL DE MODO QUE LOS METODOS SIN CONEXION PUEDAN FUNCIONAR
                 */
                 Console.WriteLine("¡Conexion a la BBDD fallida!\r\n");
                 Console.WriteLine("Error: {0}", ex.ToString());
@@ -155,7 +158,6 @@ namespace EvaluacionSistema
                 Console.WriteLine("Conexion cerrada!");
 
                 //Util.ProgramarReejecucion();
-                //Util.ProgramarScripts();
                 
                 Console.WriteLine("\r\nFin del programa!");
             }

@@ -86,9 +86,7 @@ namespace EvaluacionSistema
         public static void ProgramarScripts(List<EventRecord>[] eventos, MySqlConnection conn)
         {
             bool insert = false;
-            int id, qualifiers;
-            byte version;
-            string level, task, opcode;
+            string id, qualifiers, version, level, task, opcode;
             string modelo = ConfigurationManager.AppSettings["Modelo"];
 
             string sqlGet = "SELECT * FROM Evento WHERE ID = @id" + 
@@ -110,20 +108,20 @@ namespace EvaluacionSistema
             foreach (EventRecord evento in eventos[0])
             {
                 //Obtener valores del evento
-                id = evento.Id;
-                qualifiers = (int)evento.Qualifiers;
-                version = (byte)evento.Version;
-                level = evento.LevelDisplayName;
-                task = evento.TaskDisplayName;
-                opcode = evento.OpcodeDisplayName;
-                
+                id = evento.Id.ToString();
+                qualifiers = (evento.Qualifiers.HasValue)? evento.Qualifiers.Value.ToString() : "null";
+                version = (evento.Version.HasValue)? evento.Version.Value.ToString() : "null";
+                level = (evento.Level.HasValue) ? evento.Level.Value.ToString() : "null";
+                task = (evento.Task.HasValue) ? evento.Task.Value.ToString() : "null";
+                opcode = (evento.Opcode.HasValue) ? evento.Opcode.Value.ToString() : "null";
+
                 //Preparar consulta para comprobar si el evento ya se ha registrado
-                cmd.Parameters.AddWithValue("@id", evento.Id);
-                cmd.Parameters.AddWithValue("@qualifiers", evento.Qualifiers);
-                cmd.Parameters.AddWithValue("@version", evento.Version);
-                cmd.Parameters.AddWithValue("@level", evento.LevelDisplayName);
-                cmd.Parameters.AddWithValue("@task", evento.TaskDisplayName);
-                cmd.Parameters.AddWithValue("@opcode", evento.OpcodeDisplayName);
+                cmd.Parameters.AddWithValue("@id", id);
+                cmd.Parameters.AddWithValue("@qualifiers", qualifiers);
+                cmd.Parameters.AddWithValue("@version", version);
+                cmd.Parameters.AddWithValue("@level", level);
+                cmd.Parameters.AddWithValue("@task", task);
+                cmd.Parameters.AddWithValue("@opcode", opcode);
                 cmd.Parameters.AddWithValue("@modelo", modelo);
 
                 MySqlDataReader rdr = cmd.ExecuteReader();
@@ -132,11 +130,16 @@ namespace EvaluacionSistema
                 {
                     //El evento ya ha sido registrado
 
-                    if(rdr.GetInt32("ID_Solucion") != null) //Hay que revisar esta comprobacion
+                    if (rdr.GetValue(7).GetType().ToString().CompareTo("System.DBNull") != 0)
                     {
+                        Console.WriteLine("Hay solucion");
                         //Realizar consulta para obtener el nombre del script
                         //Comprobar si esta en local y sino descargarlo
                         //Programar la ejecucion del sxript y ademas asociarlo al evento para futuras ocasiones
+                    }
+                    else
+                    {
+                        Console.WriteLine("No hay solucion, en cuyo caso no hacer nada");
                     }
                 }
                 else
@@ -149,12 +152,13 @@ namespace EvaluacionSistema
                 }
 
                 rdr.Close();
+                cmd.Parameters.Clear();
+                break;
             }
 
             if (insert)
             {
-                sqlInsert.Remove(sqlInsert.LastIndexOf(","), 2);
-                cmd.CommandText = sqlInsert;
+                cmd.CommandText = sqlInsert.Remove(sqlInsert.LastIndexOf(","));
                 cmd.ExecuteNonQuery();
             }
 
