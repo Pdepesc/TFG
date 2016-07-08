@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Xml;
 using Microsoft.Win32;
@@ -10,6 +9,8 @@ using System.IO;
 using System.Configuration;
 using Renci.SshNet;
 using System.Diagnostics;
+using Microsoft.Win32.TaskScheduler;
+using System.Diagnostics.Eventing.Reader;
 
 namespace EvaluacionSistema
 {
@@ -266,39 +267,65 @@ namespace EvaluacionSistema
 
         #endregion Informes
 
-        #region Comandos
+        #region TaskScheduler
 
+        //Programa la ejecucion de este programa cada vez que se inicia el sistema
+        public static void InicializarTareaProgramada()
+        {
+            Task t = TaskService.Instance
+                .Execute(Directory.GetCurrentDirectory() + "\\EvaluacionSistema.exe")
+                .OnBoot()
+                .AsTask("EvaluacionSistema");
+            t.Definition.Principal.RunLevel = TaskRunLevel.Highest;
+            t.RegisterChanges();
+        }
+
+        //Programa la proxima ejecucion de este programa en funcion del intervalo establecido en las propiedades
         public static void ProgramarReejecucion()
         {
-
-            //Usar Process.Start("schtasks.exe", "argumentos");
-            //Ejemplo:
-            Process process = new Process();
-            process.StartInfo.FileName = "schtasks.exe.exe";
-            process.StartInfo.Arguments = "/create /sc once";//este comando esta mal, hay que revisarlo
-            process.StartInfo.CreateNoWindow = true;
-            process.Start();
-
-
-            //usar comando SCHTASK con alguna de las cosas de abajo para programar la reejecucion de este programa
-
-            //Process.Start("nombre programa o fichero con su ruta","argumentos que se pasarian por linea de comandos");
-            //ProcessStartInfo psi = new ProcessStartInfo(); Process.Start(psi);
-
-            //Process process = new Process();
-            //ProcessStartInfo startInfo = new ProcessStartInfo();
-            //startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            //startInfo.FileName = "cmd.exe";
-            //startInfo.Arguments = "/C copy /b Image1.jpg + Archive.rar Image2.jpg";
-            //process.StartInfo = startInfo;
-            //process.Start();
+            Task t = TaskService.Instance
+                .Execute(Directory.GetCurrentDirectory() + "\\EvaluacionSistema.exe")
+                .Once()
+                .Starting(DateTime.Now.AddHours(Double.Parse(ConfigurationManager.AppSettings["IntervaloEjecucion"])))
+                .AsTask("ReEvaluacionSistema");
+            t.Definition.Principal.RunLevel = TaskRunLevel.Highest;
+            t.RegisterChanges();
         }
 
-        public static void ProgramarScripts()
+        public static bool ExisteScriptParaEvento(string evento)
         {
-
+            return TaskService.Instance.FindTask(evento) != null;
         }
-        #endregion
 
+        public static void ProgramarScript(string script, string nombre, string eventid, string task)
+        {
+            //Programar ejecucion en el mismo dia
+            Task t = TaskService.Instance
+                .Execute(Directory.GetCurrentDirectory() + script)
+                .Once()
+                .Starting(DateTime.Now.Year, 
+                        DateTime.Now.Month, 
+                        DateTime.Now.Day, 
+                        int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsHoras"]), 
+                        int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsMinutos"]), 
+                        0)
+                .AsTask(nombre);
+            t.Definition.Principal.RunLevel = TaskRunLevel.Highest;
+
+            //Asociar el script al evento
+            t.Definition.Triggers.Add(new EventTrigger {
+                StartBoundary = new DateTime(DateTime.Now.Year,
+                        DateTime.Now.Month,
+                        DateTime.Now.Day,
+                        int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsHoras"]),
+                        int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsMinutos"]),
+                        0),
+                Subscription = "*[System[(EventID = " + eventid + ") and (Task = " + task + ")]]"
+            });
+
+            t.RegisterChanges();
+        }
+
+        #endregion TaskScheduler
     }
 }

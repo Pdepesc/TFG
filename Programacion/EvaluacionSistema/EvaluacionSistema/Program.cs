@@ -17,21 +17,12 @@ namespace EvaluacionSistema
             Console.WriteLine("Iniciando programa...\r\n");
 
             MySqlConnection conn = new MySqlConnection(ConfigurationManager.ConnectionStrings["RemoteBBDD"].ConnectionString);
-
-            //Pruebas
-
-            //EvaluacionEventos.ReadLog();
-            //Process.Start("schtasks.exe");
-            conn.Open();
-            EvaluacionEventos.EvaluacionCompleta(conn);
-            Console.Read();
-            return;
-
+            
             try
             {
                 Console.Write("Probando conexion con la BBDD... ");
 
-                //Prueba de conexion a la BBDD
+                //Prueba de conexion a la BBDD remota
                 conn.Open();
 
                 Console.WriteLine("¡Conexion a la BBDD correcta!\r\n\r\n");
@@ -44,9 +35,12 @@ namespace EvaluacionSistema
 
                     MySqlTransaction sqltransaction = conn.BeginTransaction();
 
-                    if (EvaluacionHardware.EvaluacionInicial(conn) && EvaluacionRegistro.EvaluacionInicial(conn))
+                    if (EvaluacionHardware.EvaluacionInicial(conn) && 
+                        EvaluacionRegistro.EvaluacionInicial(conn) &&
+                        EvaluacionEventos.EvaluacionInicial(conn))
                     {
                         sqltransaction.Commit();
+                        Util.InicializarTareaProgramada();
                         Util.AddUpdateAppSettings("ModoEvaluacion", "Completa");
 
                         Console.WriteLine("\r\n\r\nEvaluacion inicial finalizada con éxito!");
@@ -157,7 +151,7 @@ namespace EvaluacionSistema
 
                 Console.WriteLine("Conexion cerrada!");
 
-                //Util.ProgramarReejecucion();
+                Util.ProgramarReejecucion();
                 
                 Console.WriteLine("\r\nFin del programa!");
             }

@@ -193,7 +193,7 @@ namespace EvaluacionSistema
             rdr.Read();
 
             int versionBD = rdr.GetInt32("Version");
-            string url = rdr.GetString("UrlDescarga");
+            string url = "registro/" + rdr.GetString("UrlDescarga");
 
             rdr.Close();
 

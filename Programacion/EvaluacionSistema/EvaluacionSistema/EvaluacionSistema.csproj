@@ -36,6 +36,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.Win32.TaskScheduler">
+      <HintPath>lib\TaskScheduler\v4.5.2\Microsoft.Win32.TaskScheduler.dll</HintPath>
+    </Reference>
     <Reference Include="MySql.Data, Version=6.1.6.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
     <Reference Include="OpenHardwareMonitorLib">
       <HintPath>..\..\OpenHardwareMonitorLib.dll</HintPath>

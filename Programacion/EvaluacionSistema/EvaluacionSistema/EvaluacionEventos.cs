@@ -13,8 +13,61 @@ namespace EvaluacionSistema
 {
     class EvaluacionEventos
     {
+        #region EvaluacionInicial
+
+        public static bool EvaluacionInicial(MySqlConnection conn)
+        {
+            string query = "*[System[(Level = 1  or Level = 2)]]";
+            EventLogQuery eventsQuery = new EventLogQuery("System", PathType.LogName, query);
+
+            try
+            {
+                EventLogReader logReader = new EventLogReader(eventsQuery);
+
+                string id, qualifiers, version, level, task, opcode;
+                string modelo = ConfigurationManager.AppSettings["Modelo"];
+
+                MySqlCommand cmd = new MySqlCommand();
+                cmd.Prepare();
+
+                for (EventRecord evento = logReader.ReadEvent(); evento != null; evento = logReader.ReadEvent())
+                {
+                    //Obtener valores del evento
+                    id = evento.Id.ToString();
+                    qualifiers = (evento.Qualifiers.HasValue) ? evento.Qualifiers.Value.ToString() : "null";
+                    version = (evento.Version.HasValue) ? evento.Version.Value.ToString() : "null";
+                    level = (evento.Level.HasValue) ? evento.Level.Value.ToString() : "null";
+                    task = (evento.Task.HasValue) ? evento.Task.Value.ToString() : "null";
+                    opcode = (evento.Opcode.HasValue) ? evento.Opcode.Value.ToString() : "null";
+
+                    try
+                    {
+                        string sqlInsert = "INSERT INTO Evento_Solucion(ID, Qualifiers, Version, Level, Task, Opcode, ModeloEstacion) " +
+                        "VALUES (" + id + ", '" + qualifiers + "'" + ", '" + version + "'" + ", '" + level + "'" +
+                        ", '" + task + "'" + ", '" + opcode + "'" + ", '" + modelo + "'" + ")";
+
+                        cmd.CommandText = sqlInsert;
+                        cmd.ExecuteNonQuery();
+                    }
+                    catch (MySqlException e)
+                    {
+                        continue;
+                    }
+
+                }
+                return true;
+            }
+            catch (EventLogNotFoundException e)
+            {
+                Console.WriteLine("Error while reading the event logs");
+                return false;
+            }
+        }
+
+        #endregion EvaluacionInicial
+
         #region EvaluacionCompleta
-        
+
         public static bool EvaluacionCompleta(MySqlConnection conn)
         {
             try
@@ -32,7 +85,10 @@ namespace EvaluacionSistema
                 {
                     Informe(eventos);
                     if (eventos[0].Count > 0 || eventos[1].Count > 0)
-                        ProgramarScripts(eventos, conn);
+                    {
+                        eventos[0].AddRange(eventos[1]);
+                        ProgramarScripts(eventos[0], conn);
+                    }
                     return true;
                 }
                 else
@@ -83,13 +139,11 @@ namespace EvaluacionSistema
             }
         }
 
-        public static void ProgramarScripts(List<EventRecord>[] eventos, MySqlConnection conn)
+        public static void ProgramarScripts(List<EventRecord> eventos, MySqlConnection conn)
         {
-            bool insert = false;
             string id, qualifiers, version, level, task, opcode;
             string modelo = ConfigurationManager.AppSettings["Modelo"];
-
-            string sqlGet = "SELECT * FROM Evento WHERE ID = @id" + 
+            string sqlGet = "SELECT * FROM Evento_Solucion WHERE ID = @id" +
                 " AND QUALIFIERS = @qualifiers" +
                 " AND VERSION = @version" +
                 " AND LEVEL = @level" +
@@ -97,15 +151,10 @@ namespace EvaluacionSistema
                 " AND OPCODE = @opcode" +
                 " AND MODELOESTACION = @modelo";
 
-            string sqlInsert = "INSERT INTO Evento(ID, Qualifiers, Version, Level, Task, Opcode, ModeloEstacion) VALUES ";
-
             MySqlCommand cmd = new MySqlCommand(sqlGet, conn);
             cmd.Prepare();
-
-            //Juntamos los eventos criticos y los de error en un solo array
-            eventos[0].AddRange(eventos[1]);
             
-            foreach (EventRecord evento in eventos[0])
+            foreach (EventRecord evento in eventos)
             {
                 //Obtener valores del evento
                 id = evento.Id.ToString();
@@ -115,7 +164,12 @@ namespace EvaluacionSistema
                 task = (evento.Task.HasValue) ? evento.Task.Value.ToString() : "null";
                 opcode = (evento.Opcode.HasValue) ? evento.Opcode.Value.ToString() : "null";
 
-                //Preparar consulta para comprobar si el evento ya se ha registrado
+                string nombreEvento = String.Join("-", new string[] { id, qualifiers, version, task, opcode, modelo });
+
+                //Comprobamos que el evento no tenga ya asociado un script (para evitar duplicados)
+                if (Util.ExisteScriptParaEvento(nombreEvento)) continue;
+
+                //Preparar consulta para comprobar si el evento ya se ha registrado en la BBDD
                 cmd.Parameters.AddWithValue("@id", id);
                 cmd.Parameters.AddWithValue("@qualifiers", qualifiers);
                 cmd.Parameters.AddWithValue("@version", version);
@@ -125,47 +179,58 @@ namespace EvaluacionSistema
                 cmd.Parameters.AddWithValue("@modelo", modelo);
 
                 MySqlDataReader rdr = cmd.ExecuteReader();
-                
+
+                //Si el evento ya esta registrado en la BBDD
                 if (rdr.Read())
                 {
-                    //El evento ya ha sido registrado
+                    #region EventoEnBBDD
 
-                    if (rdr.GetValue(7).GetType().ToString().CompareTo("System.DBNull") != 0)
+                    //Obtenemos el tipo de solucion (si la hay)
+                    string tipoSolucion = rdr.GetString("TipoSolucion");
+
+                    switch (tipoSolucion)
                     {
-                        Console.WriteLine("Hay solucion");
-                        //Realizar consulta para obtener el nombre del script
-                        //Comprobar si esta en local y sino descargarlo
-                        //Programar la ejecucion del sxript y ademas asociarlo al evento para futuras ocasiones
+                        case "Script":
+                            string path = rdr.GetString("UrlDescargaScript");
+
+                            //Esta en local?
+                            if (!File.Exists("Scripts/" + path))
+                            {
+                                Util.SFTPDownload("Scripts/" + path, "Scripts/" + path);
+                            }
+
+                            Util.ProgramarScript(path, nombreEvento, id, task);
+
+                            break;
+                        case "Manual":
+                            //Avisar a tecnico
+                            break;
+                        case "SinSolucion":
+                        case "Desconocida":
+                            break;
                     }
-                    else
-                    {
-                        Console.WriteLine("No hay solucion, en cuyo caso no hacer nada");
-                    }
+
+                    #endregion EventoEnBBDD
                 }
+                //Si no esta registrado en la BBDD lo añadimos
                 else
                 {
-                    //El evento no ha sido registrado (y hay que hacerlo)
-                    insert = true;
+                    #region EventoNoEnBBDD
 
-                    sqlInsert += "(" + id + ", '" + qualifiers + "'" + ", '" + version + "'" + ", '" + level + "'" +
-                        ", '" + task + "'" + ", '" + opcode + "'" + ", '" + modelo + "'" + "), ";
+                    string sqlInsert = "INSERT INTO Evento_Solucion(ID, Qualifiers, Version, Level, Task, Opcode, ModeloEstacion) " +
+                        "VALUES (" + id + ", '" + qualifiers + "'" + ", '" + version + "'" + ", '" + level + "'" +
+                        ", '" + task + "'" + ", '" + opcode + "'" + ", '" + modelo + "'" + ")";
+
+                    cmd.CommandText = sqlInsert;
+                    cmd.ExecuteNonQuery();
+
+                    #endregion EventoNoEnBBDD
                 }
 
                 rdr.Close();
+                cmd.CommandText = sqlGet;
                 cmd.Parameters.Clear();
-                break;
             }
-
-            if (insert)
-            {
-                cmd.CommandText = sqlInsert.Remove(sqlInsert.LastIndexOf(","));
-                cmd.ExecuteNonQuery();
-            }
-
-            //Depende de si decido borrar los eventos o obtener solo los de un determinado intervalo de tiempo
-            //EventLog eventLog = new EventLog();
-            //eventLog.Log = "System";
-            //eventLog.Clear();
         }
 
         #endregion EvaluacionCompleta
@@ -205,47 +270,5 @@ namespace EvaluacionSistema
         }
 
         #endregion Informe
-
-        #region Utilidad/Ejemplos
-
-        public static void ReadEventLogMalo()
-        {
-            //Para leer logs hace falta especificar el Log y el MachineName, aunque si no se especifica MachineName coge por defecto el local (".");
-            //EventLog myLog = new EventLog();
-            //myLog.Log = "System";
-            //foreach (EventLogEntry entry in myLog.Entries)
-            //{
-            //    Console.WriteLine(
-            //        "\r\nCategory:" + entry.Category +
-            //        "\r\nCategoryNumber:" + entry.CategoryNumber +
-            //        "\r\nContainer:" + entry.Container +
-            //        "\r\nData:" + entry.Data +
-            //        "\r\nEntryType:" + entry.EntryType +
-            //        "\r\nEventId:" + entry.EventID +
-            //        "\r\nIndex:" + entry.Index +
-            //        "\r\nInstanceId:" + entry.InstanceId +
-            //        "\r\nMachineName:" + entry.MachineName +
-            //        "\r\nMessage:" + entry.Message +
-            //        "\r\nReplacementStrings:" + entry.ReplacementStrings +
-            //        "\r\nSite:" + entry.Site +
-            //        "\r\nSource:" + entry.Source +
-            //        "\r\nTimeGenerated:" + entry.TimeGenerated +
-            //        "\r\nTimeWritten:" + entry.TimeWritten +
-            //        "\r\nUserName:" + entry.UserName
-            //        );
-            //    Console.Read();
-            //    foreach(String s in entry.ReplacementStrings)
-            //    {
-            //        Console.WriteLine("\t" + s);
-            //    }
-            //    foreach(Byte b in entry.Data)
-            //    {
-            //        Console.Write(b);
-            //    }
-            //Posible event.clear() para borrar las entradas
-            //}
-        }
-
-        #endregion Utilidad/Ejemplos
     }
 }
