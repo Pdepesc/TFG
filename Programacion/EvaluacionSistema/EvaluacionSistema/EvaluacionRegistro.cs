@@ -79,7 +79,7 @@ namespace EvaluacionSistema
 
         #region EvaluacionCompleta
 
-        public static bool EvaluacionCompleta(MySqlConnection conn)
+        public static int EvaluacionCompleta(MySqlConnection conn)
         {
             try
             {
@@ -103,15 +103,13 @@ namespace EvaluacionSistema
                 if ((fallos[0].Count > 0) || (fallos[1].Count > 0))
                 {
                     Informe(fallos);
-                    return true;
                 }
-                else
-                    return false;
+                return fallos[0].Count + fallos[1].Count;
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
-                return false;
+                return -1;
             }
         }
 

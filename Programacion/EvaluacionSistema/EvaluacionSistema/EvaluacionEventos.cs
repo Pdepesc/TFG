@@ -17,6 +17,7 @@ namespace EvaluacionSistema
 
         public static bool EvaluacionInicial(MySqlConnection conn)
         {
+            //string query = "*[System[(Level=1  or Level=2) and TimeCreated[timediff(@SystemTime) <= 86400000]]]";
             string query = "*[System[(Level = 1  or Level = 2)]]";
             EventLogQuery eventsQuery = new EventLogQuery("System", PathType.LogName, query);
 
@@ -28,6 +29,7 @@ namespace EvaluacionSistema
                 string modelo = ConfigurationManager.AppSettings["Modelo"];
 
                 MySqlCommand cmd = new MySqlCommand();
+                cmd.Connection = conn;
                 cmd.Prepare();
 
                 for (EventRecord evento = logReader.ReadEvent(); evento != null; evento = logReader.ReadEvent())
@@ -48,9 +50,11 @@ namespace EvaluacionSistema
 
                         cmd.CommandText = sqlInsert;
                         cmd.ExecuteNonQuery();
+                        Console.WriteLine("Evento añadido");
                     }
                     catch (MySqlException e)
                     {
+                        Console.WriteLine("Evento duplicado");
                         continue;
                     }
 
@@ -68,7 +72,7 @@ namespace EvaluacionSistema
 
         #region EvaluacionCompleta
 
-        public static bool EvaluacionCompleta(MySqlConnection conn)
+        public static int EvaluacionCompleta(MySqlConnection conn)
         {
             try
             {
@@ -77,7 +81,7 @@ namespace EvaluacionSistema
                 Console.Write("\tComprobando eventos del sistema... ");
                 
                 //List<EventRecord>[Critico, Error, Advertencia]
-                List<EventRecord>[] eventos = ReadEventLog();
+                List<EventRecord>[] eventos = ReadEventLog();   //Lee eventos desde el ultimo inicio del sistema
 
                 Console.WriteLine("Eventos del sistema comprobados!");
 
@@ -87,17 +91,15 @@ namespace EvaluacionSistema
                     if (eventos[0].Count > 0 || eventos[1].Count > 0)
                     {
                         eventos[0].AddRange(eventos[1]);
-                        ProgramarScripts(eventos[0], conn);
+                        SolucionarEventos(eventos[0], conn);
                     }
-                    return true;
                 }
-                else
-                    return false;
+                return eventos[0].Count + eventos[1].Count + eventos[2].Count;
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
-                return false;
+                return -1;
             }
         }
 
@@ -139,7 +141,7 @@ namespace EvaluacionSistema
             }
         }
 
-        public static void ProgramarScripts(List<EventRecord> eventos, MySqlConnection conn)
+        public static void SolucionarEventos(List<EventRecord> eventos, MySqlConnection conn)
         {
             string id, qualifiers, version, level, task, opcode;
             string modelo = ConfigurationManager.AppSettings["Modelo"];
@@ -191,15 +193,17 @@ namespace EvaluacionSistema
                     switch (tipoSolucion)
                     {
                         case "Script":
-                            string path = rdr.GetString("UrlDescargaScript");
+                            string nombreScript = rdr.GetString("UrlDescargaScript");
+                            string pathScript = "Scripts/" + nombreScript;
 
                             //Esta en local?
-                            if (!File.Exists("Scripts/" + path))
+                            if (!File.Exists(pathScript))
                             {
-                                Util.SFTPDownload("Scripts/" + path, "Scripts/" + path);
+                                Util.SFTPDownload(pathScript, pathScript);
                             }
 
-                            Util.ProgramarScript(path, nombreEvento, id, task);
+                            //si el bool lo ponemos a true el script se asocia al evento
+                            Util.ProgramarScript(pathScript, nombreEvento, false, id, task);
 
                             break;
                         case "Manual":

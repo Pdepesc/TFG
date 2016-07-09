@@ -297,31 +297,42 @@ namespace EvaluacionSistema
             return TaskService.Instance.FindTask(evento) != null;
         }
 
-        public static void ProgramarScript(string script, string nombre, string eventid, string task)
+        public static void ProgramarScript(string script, string nombre, bool asociarEvento, string eventid, string task)
         {
-            //Programar ejecucion en el mismo dia
-            Task t = TaskService.Instance
-                .Execute(Directory.GetCurrentDirectory() + script)
-                .Once()
-                .Starting(DateTime.Now.Year, 
-                        DateTime.Now.Month, 
-                        DateTime.Now.Day, 
-                        int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsHoras"]), 
-                        int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsMinutos"]), 
-                        0)
-                .AsTask(nombre);
-            t.Definition.Principal.RunLevel = TaskRunLevel.Highest;
-
-            //Asociar el script al evento
-            t.Definition.Triggers.Add(new EventTrigger {
-                StartBoundary = new DateTime(DateTime.Now.Year,
+            DateTime ejecucion = new DateTime(DateTime.Now.Year,
                         DateTime.Now.Month,
                         DateTime.Now.Day,
                         int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsHoras"]),
                         int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsMinutos"]),
-                        0),
-                Subscription = "*[System[(EventID = " + eventid + ") and (Task = " + task + ")]]"
-            });
+                        0);
+            //Programar ejecucion en el mismo dia
+            Task t = TaskService.Instance
+                .Execute(Directory.GetCurrentDirectory() + "\\" + script)
+                .Once()
+                .Starting(ejecucion)
+                .Ending(ejecucion.AddSeconds(30))
+                .AsTask(nombre);
+            t.Definition.Principal.RunLevel = TaskRunLevel.Highest;
+            t.Definition.Settings.DeleteExpiredTaskAfter = TimeSpan.FromMilliseconds(0);
+
+            if (asociarEvento)
+            {
+                //Asociar el script al evento
+                t.Definition.Triggers.Add(new EventTrigger
+                {
+                    StartBoundary = new DateTime(DateTime.Now.Year,
+                            DateTime.Now.Month,
+                            DateTime.Now.Day,
+                            int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsHoras"]),
+                            int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsMinutos"]),
+                            0),
+                    Subscription = "<QueryList>" +
+                        "<Query Id='0' Path='System'>" +
+                        "<Select Path='System'> *[System[(EventID = " + eventid + ") and (Task = " + task + ")]] </Select >" +
+                        "</Query>" +
+                        "</QueryList>"
+                });
+            }
 
             t.RegisterChanges();
         }

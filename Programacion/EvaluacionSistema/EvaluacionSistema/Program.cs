@@ -17,7 +17,7 @@ namespace EvaluacionSistema
             Console.WriteLine("Iniciando programa...\r\n");
 
             MySqlConnection conn = new MySqlConnection(ConfigurationManager.ConnectionStrings["RemoteBBDD"].ConnectionString);
-            
+                                                
             try
             {
                 Console.Write("Probando conexion con la BBDD... ");
@@ -72,49 +72,23 @@ namespace EvaluacionSistema
                     
                     Util.EnviarInformes();
 
-                    //Lo de programar reejecucion y hacer la consulta para añadir registro podria ir en el bloque finally (despues del try-catch)
-
                     //Añadir registro a la tabla Evaluacion (Cambiar los campos de tipo bool por tipo int en los que ponga el Nº de errores pudeindo ser 0)
                     #region consultaAñadirEvaluacion
-                    /*
-                    String sql = "INSERT INTO Evaluacion(ID_Estacion, Fecha, ErrorHardware, ErrorRegistro, ErrorContadores) " + 
-                            "VALUES (@idestacion, @fecha, @errorHardware, @errorRegistro, @errorContadores)";
+                    
+                    String sql = "INSERT INTO Evaluacion(ID_Estacion, Fecha, ErrorESHardware, ErrorESRegistro, ErrorContadores) " + 
+                            "VALUES (@idestacion, @fecha, @erroresHardware, @erroresRegistro, @erroresContadores)";
                     MySqlCommand cmd = new MySqlCommand(sql, conn);
                     cmd.Prepare();
 
-                    cmd.Parameters.AddWithValue("@idestacion", properties.get("IdEstacion"));
+                    cmd.Parameters.AddWithValue("@idestacion", ConfigurationManager.AppSettings["IdEstacion"]);
                     cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
-
-                    if (fallosHardware != null && fallosHardware.Count > 0)
-                    {
-                        EvaluacionHardware.PostEvaluacion(fallosHardware);
-                        cmd.Parameters.AddWithValue("@errorHardware", 1);
-                    }
-                    else
-                        cmd.Parameters.AddWithValue("@errorHardware", 0);
-
-                    if (fallosRegistro[0].Count > 0 || fallosRegistro[1].Count > 0)
-                    {
-                        EvaluacionRegistro.PostEvaluacion(fallosRegistro);
-                        cmd.Parameters.AddWithValue("@errorRegistro", 1);
-                    }
-                    else
-                        cmd.Parameters.AddWithValue("@errorHardware", 0);
-
-                    if(fallosContadores > 0)
-                    {
-                        EvaluacionContadores.PostEvaluacion(fallosContadores);
-                        cmd.Parameters.AddWithValue("@errorContadores", 1);
-                    }
-                    else
-                        cmd.Parameters.AddWithValue("@errorContadores", 0);
-
+                    cmd.Parameters.AddWithValue("@erroresHardware", resultado.GetErroresHardware());
+                    cmd.Parameters.AddWithValue("@erroresRegistro", resultado.GetErroresRegistro());
+                    cmd.Parameters.AddWithValue("@erroresEventos", resultado.GetErroresEventos());
+                    
                     cmd.ExecuteNonQuery();
-                    */
 
                     #endregion consultaAñadirEvaluacion
-
-                    //Programar reejecucion del programa
 
                     #endregion PostEvaluacion
                 }

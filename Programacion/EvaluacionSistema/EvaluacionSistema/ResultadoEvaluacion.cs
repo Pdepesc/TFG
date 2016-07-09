@@ -10,30 +10,45 @@ namespace EvaluacionSistema
     class ResultadoEvaluacion
     {
         private DateTime fecha;
-        private bool errorHardware;
-        private bool errorRegistro;
-        private bool errorEventos;
+        private int erroresHardware;
+        private int erroresRegistro;
+        private int erroresEventos;
         
         public ResultadoEvaluacion()
         {
             fecha = DateTime.Now;
-            errorHardware = false;
-            errorRegistro = false;
-            errorEventos = false;
+            erroresHardware = 0;
+            erroresRegistro = 0;
+            erroresEventos = 0;
         } 
 
-        public ResultadoEvaluacion(bool errorHardware, bool errorRegistro, bool errorEventos)
+        public ResultadoEvaluacion(int erroresHardware, int erroresRegistro, int erroresEventos)
         {
             fecha = DateTime.Now;
-            this.errorHardware = errorHardware;
-            this.errorRegistro = errorRegistro;
-            this.errorEventos = errorEventos;
+            this.erroresHardware = erroresHardware;
+            this.erroresRegistro = erroresRegistro;
+            this.erroresEventos = erroresEventos;
+        }
+
+        public int GetErroresHardware()
+        {
+            return erroresHardware;
+        }
+
+        public int GetErroresRegistro()
+        {
+            return erroresRegistro;
+        }
+
+        public int GetErroresEventos()
+        {
+            return erroresEventos;
         }
 
         //True si hay algun fallo, False en caso contrario
         public bool HayError()
         {
-            return (errorHardware || errorRegistro || errorEventos);
+            return (erroresHardware > 0|| erroresRegistro > 0 || erroresEventos > 0);
         }
     }
 }
