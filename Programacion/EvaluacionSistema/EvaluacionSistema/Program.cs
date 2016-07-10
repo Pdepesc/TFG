@@ -17,7 +17,7 @@ namespace EvaluacionSistema
             Console.WriteLine("Iniciando programa...\r\n");
 
             MySqlConnection conn = new MySqlConnection(ConfigurationManager.ConnectionStrings["RemoteBBDD"].ConnectionString);
-                                                
+                                                     
             try
             {
                 Console.Write("Probando conexion con la BBDD... ");
@@ -96,9 +96,13 @@ namespace EvaluacionSistema
             }
             catch (MySqlException ex)
             {
+                Console.WriteLine("¡Conexion a la BBDD remota fallida!\r\n");
+                Console.WriteLine("Error: {0}", ex.ToString());
+                Console.WriteLine("Conectando a la BBDD local");
                 //Si no hay conexion a la BBDD remota usamos la local
-                conn = new MySqlConnection(ConfigurationManager.ConnectionStrings["LocalBBDD"].ConnectionString);
+                conn.ConnectionString = ConfigurationManager.ConnectionStrings["LocalBBDD"].ConnectionString;
                 conn.Open();
+
                 //Revisar los metodos para que no se conecten al servidor y, cambiar las funciones que dependan de la red o quitarlas
 
                 /*
@@ -113,9 +117,6 @@ namespace EvaluacionSistema
                   SI PONGO METODOS ESPECIFICOS PARA FUNCIONAR SIN CONEXION HABRA QUE ACTUALIZAR LOS DE QUE SÍ TIENEN CONEXION
                   PARA QUE ACTUALICEN LAS COSAS DE LA BBDD LOCAL DE MODO QUE LOS METODOS SIN CONEXION PUEDAN FUNCIONAR
                 */
-                Console.WriteLine("¡Conexion a la BBDD fallida!\r\n");
-                Console.WriteLine("Error: {0}", ex.ToString());
-                return;
             }
             finally
             {

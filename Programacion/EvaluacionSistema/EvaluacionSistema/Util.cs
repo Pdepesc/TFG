@@ -305,6 +305,8 @@ namespace EvaluacionSistema
                         int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsHoras"]),
                         int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsMinutos"]),
                         0);
+            //DateTime ejecucion = DateTime.Now.AddMinutes(1);
+
             //Programar ejecucion en el mismo dia
             Task t = TaskService.Instance
                 .Execute(Directory.GetCurrentDirectory() + "\\" + script)
@@ -313,7 +315,7 @@ namespace EvaluacionSistema
                 .Ending(ejecucion.AddSeconds(30))
                 .AsTask(nombre);
             t.Definition.Principal.RunLevel = TaskRunLevel.Highest;
-            t.Definition.Settings.DeleteExpiredTaskAfter = TimeSpan.FromMilliseconds(0);
+            t.Definition.Settings.DeleteExpiredTaskAfter = TimeSpan.FromSeconds(30);
 
             if (asociarEvento)
             {

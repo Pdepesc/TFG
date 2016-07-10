@@ -116,6 +116,7 @@ namespace EvaluacionSistema
             float time = systemUpTime.NextValue() * 1000;
 
             string query = "*[System[(Level = 1  or Level = 2 or Level = 3) and TimeCreated[timediff(@SystemTime) <= " + time + "]]]";
+            //string query = "*[System[(Level = 1  or Level = 2 or Level = 3) and TimeCreated[timediff(@SystemTime) <= 43200000]]]";
             EventLogQuery eventsQuery = new EventLogQuery("System", PathType.LogName, query);
 
             try
