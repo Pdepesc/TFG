@@ -18,27 +18,23 @@ namespace EvaluacionSistema
         public static bool EvaluacionInicial(MySqlConnection conn)
         {
             try {
-                Console.WriteLine("---Registro---\r\n");
+                Console.WriteLine("---Registro---\r\n\r\n");
 
                 Console.Write("\tComprobando version del registro... ");
-
                 ComprobarVersionRegistro(conn);
-
                 Console.WriteLine("Version del registro comprobada!");
 
                 Console.Write("\tComprobando valores del registro... ");
-
                 int[] fallos = ComprobarContenidoRegistro();
-
                 Console.WriteLine("Valores del registro comprobados!\r\n");
 
-                Console.WriteLine("{0} registro erróneos - {1} corregidos - {2} sin corregir", fallos[0] + fallos[1], fallos[0], fallos[1]);
+                Console.WriteLine("{0} registros erróneos: {1} corregidos - {2} sin corregir", fallos[0] + fallos[1], fallos[0], fallos[1]);
                                 
                 return true;
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Console.WriteLine("\r\n\r\nError en la evaluacion inicial del registro: \r\n\t{0}", e.ToString());
                 return false;
             }
         }
@@ -83,12 +79,10 @@ namespace EvaluacionSistema
         {
             try
             {
-                Console.WriteLine("---Registro---\r\n");
+                Console.WriteLine("---Registro---\r\n\r\n");
 
                 Console.Write("\tComprobando version del registro... ");
-
                 ComprobarVersionRegistro(conn);
-
                 Console.WriteLine("Version del registro comprobada!");
 
                 Console.Write("\tComprobando valores del registro... ");
@@ -98,7 +92,7 @@ namespace EvaluacionSistema
 
                 Console.WriteLine("Valores del registro comprobados!\r\n");
 
-                Console.WriteLine("\t{0} registro erróneos - {1} corregidos - {2} sin corregir", fallos[0].Count + fallos[1].Count, fallos[0].Count, fallos[1].Count);
+                Console.WriteLine("\t{0} registro erróneos: {1} corregidos - {2} sin corregir", fallos[0].Count + fallos[1].Count, fallos[0].Count, fallos[1].Count);
 
                 if ((fallos[0].Count > 0) || (fallos[1].Count > 0))
                 {
@@ -108,7 +102,7 @@ namespace EvaluacionSistema
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Console.WriteLine("\r\n\r\nError en la evaluacion completa del registro: \r\n\t{0}", e.ToString());
                 return -1;
             }
         }
@@ -148,11 +142,16 @@ namespace EvaluacionSistema
 
         #region Informe
 
-        public static void Informe(List<String[]>[] fallosRegistro)
+        private static void Informe(List<String[]>[] fallosRegistro)
         {
-            Console.Write("\tPostEvaluacion de Registro....");
+            Console.Write("\tRealizando informe de Registro....");
 
-            String path = "Informes/InformeRegistro-" + DateTime.Now.Day + "-" + DateTime.Now.Month + "-" + DateTime.Now.Year + ".txt";
+            String path = "Informes/InformeRegistro-" +
+                DateTime.Now.Day + "." +
+                DateTime.Now.Month + "." +
+                DateTime.Now.Year + " (" +
+                DateTime.Now.Hour + "." +
+                DateTime.Now.Minute + ").txt";
             using (StreamWriter sw = File.CreateText(path))
             {
                 sw.WriteLine("Registros erroneos que se han corregido"); sw.WriteLine();
@@ -170,7 +169,7 @@ namespace EvaluacionSistema
                 }
             }
             
-            Console.WriteLine("Informe de Registro hecho!");
+            Console.WriteLine("Informe realizado!");
         }
 
         #endregion Informe
@@ -191,14 +190,12 @@ namespace EvaluacionSistema
             rdr.Read();
 
             int versionBD = rdr.GetInt32("Version");
-            string url = "registro/" + rdr.GetString("UrlDescarga");
+            string url = "Registro/" + rdr.GetString("UrlDescarga");
 
             rdr.Close();
 
             if (versionLocal != versionBD)
             {
-                Console.WriteLine("\t\tActualizando el fichero del registro...");
-
                 Util.SFTPDownload(url, "Registro.xml");
 
                 Util.AddUpdateAppSettings("VersionRegistro", versionBD.ToString());
@@ -208,8 +205,6 @@ namespace EvaluacionSistema
                 cmd.Parameters.AddWithValue("@version", versionBD.ToString());
                 cmd.Parameters.AddWithValue("@id", Util.ReadSetting("IdEstacion"));
                 cmd.ExecuteNonQuery();
-
-                Console.WriteLine("\t\tFichero del registro actualizado!");
             }
         }
 

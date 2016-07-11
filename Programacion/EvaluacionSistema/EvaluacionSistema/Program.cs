@@ -27,11 +27,13 @@ namespace EvaluacionSistema
 
                 Console.WriteLine("¡Conexion a la BBDD correcta!\r\n\r\n");
                 
-                if (ConfigurationManager.AppSettings["ModoEvaluacion"].ToString().CompareTo("Inicial") == 0)
+                if (Util.ReadSetting("ModoEvaluacion").ToString().CompareTo("Inicial") == 0)
                 {
                     #region EvaluacionInicial
 
-                    Console.WriteLine("Iniciando evaluacion inicial de la estacion\r\n");
+                    Util.RegistrarEstacion(conn);
+
+                    Console.WriteLine("Iniciando evaluacion inicial de la estacion\r\n\r\n");
 
                     MySqlTransaction sqltransaction = conn.BeginTransaction();
 
@@ -58,13 +60,14 @@ namespace EvaluacionSistema
                 {
                     #region EvaluacionCompleta
 
-                    Console.Write("Iniciando evaluacion completa de la estacion...");
+                    Console.WriteLine("Iniciando evaluacion completa de la estacion...");
 
-                    ResultadoEvaluacion resultado = new ResultadoEvaluacion(EvaluacionHardware.EvaluacionCompleta(conn),
+                    ResultadoEvaluacion resultado = new ResultadoEvaluacion(
+                        EvaluacionHardware.EvaluacionCompleta(conn),
                         EvaluacionRegistro.EvaluacionCompleta(conn),
                         EvaluacionEventos.EvaluacionCompleta(conn));
 
-                    Console.WriteLine("\tEvaluacion completa finalizada!");
+                    Console.WriteLine("\r\nEvaluacion completa finalizada!");
                     
                     #endregion EvaluacionCompleta
 
@@ -72,15 +75,14 @@ namespace EvaluacionSistema
                     
                     Util.EnviarInformes();
 
-                    //Añadir registro a la tabla Evaluacion (Cambiar los campos de tipo bool por tipo int en los que ponga el Nº de errores pudeindo ser 0)
                     #region consultaAñadirEvaluacion
                     
-                    String sql = "INSERT INTO Evaluacion(ID_Estacion, Fecha, ErrorESHardware, ErrorESRegistro, ErrorContadores) " + 
-                            "VALUES (@idestacion, @fecha, @erroresHardware, @erroresRegistro, @erroresContadores)";
+                    String sql = "INSERT INTO Evaluacion(ID_Estacion, Fecha, ErroresHardware, ErroresRegistro, ErroresEventos) " + 
+                            "VALUES (@idestacion, @fecha, @erroresHardware, @erroresRegistro, @erroresEventos)";
                     MySqlCommand cmd = new MySqlCommand(sql, conn);
                     cmd.Prepare();
 
-                    cmd.Parameters.AddWithValue("@idestacion", ConfigurationManager.AppSettings["IdEstacion"]);
+                    cmd.Parameters.AddWithValue("@idestacion", Util.ReadSetting("IdEstacion"));
                     cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
                     cmd.Parameters.AddWithValue("@erroresHardware", resultado.GetErroresHardware());
                     cmd.Parameters.AddWithValue("@erroresRegistro", resultado.GetErroresRegistro());

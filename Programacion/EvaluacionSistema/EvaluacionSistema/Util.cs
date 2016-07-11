@@ -11,11 +11,36 @@ using Renci.SshNet;
 using System.Diagnostics;
 using Microsoft.Win32.TaskScheduler;
 using System.Diagnostics.Eventing.Reader;
+using MySql.Data.MySqlClient;
 
 namespace EvaluacionSistema
 {
     class Util
     {
+        #region RegistrarEstacion
+
+        public static void RegistrarEstacion(MySqlConnection conn)
+        {
+            Console.Write("\r\nAñadiendo estacion a la BBDD... ");
+
+            //Añadir esta estación a la BBDD y obtener su ID
+            string sql = "INSERT INTO Estacion(Empresa, Modelo, VersionRegistro) VALUES (@empresa, @modelo, @version)";
+
+            MySqlCommand cmd = new MySqlCommand(sql, conn);
+            cmd.Prepare();
+
+            cmd.Parameters.AddWithValue("@empresa", Util.ReadSetting("Empresa"));
+            cmd.Parameters.AddWithValue("@modelo", Util.ReadSetting("Modelo"));
+            cmd.Parameters.AddWithValue("@version", Util.ReadSetting("VersionRegistro"));
+            cmd.ExecuteNonQuery();
+            
+            Util.AddUpdateAppSettings("IdEstacion", cmd.LastInsertedId.ToString());
+
+            Console.WriteLine("Estacion añadida!\r\n");
+        }
+
+        #endregion RegistrarEstacion
+
         #region SFTPManager
 
         public static void SFTPDownload(String remoteUrl, String localDestinationFilename)
@@ -65,8 +90,8 @@ namespace EvaluacionSistema
 
                 using (var fileStream = new FileStream(localFilename, FileMode.Open))
                 {
-                    Console.WriteLine("Uploading {0} ({1:N0} bytes)",
-                                        localFilename, fileStream.Length);
+                    //Console.WriteLine("Uploading {0} ({1:N0} bytes)",
+                    //                    localFilename, fileStream.Length);
                     client.BufferSize = 4 * 1024; // bypass Payload error large files
                     client.UploadFile(fileStream, Path.GetFileName(localFilename));
                 }
@@ -260,7 +285,7 @@ namespace EvaluacionSistema
             foreach (string fileName in fileEntries)
             {
                 Util.SFTPUpload("Informes/", fileName);
-                if (ConfigurationManager.AppSettings["AlmacenarInformes"].CompareTo("No") == 0)
+                if (Util.ReadSetting("AlmacenarInformes").CompareTo("No") == 0)
                     File.Delete(fileName);
             }
         }
@@ -274,10 +299,11 @@ namespace EvaluacionSistema
         {
             Task t = TaskService.Instance
                 .Execute(Directory.GetCurrentDirectory() + "\\EvaluacionSistema.exe")
-                .OnBoot()
+                .AtLogon()
                 .AsTask("EvaluacionSistema");
             t.Definition.Principal.RunLevel = TaskRunLevel.Highest;
             t.RegisterChanges();
+            Console.WriteLine("\r\nSe ha programado la ejecucion de este programa tras el proximo inicio de sesion");
         }
 
         //Programa la proxima ejecucion de este programa en funcion del intervalo establecido en las propiedades
@@ -286,10 +312,11 @@ namespace EvaluacionSistema
             Task t = TaskService.Instance
                 .Execute(Directory.GetCurrentDirectory() + "\\EvaluacionSistema.exe")
                 .Once()
-                .Starting(DateTime.Now.AddHours(Double.Parse(ConfigurationManager.AppSettings["IntervaloEjecucion"])))
+                .Starting(DateTime.Now.AddHours(Double.Parse(Util.ReadSetting("IntervaloEjecucion"))))
                 .AsTask("ReEvaluacionSistema");
             t.Definition.Principal.RunLevel = TaskRunLevel.Highest;
             t.RegisterChanges();
+            Console.WriteLine("\r\nSe ha programado la ejecucion de este programa tras {0} horas", Util.ReadSetting("IntervaloEjecucion"));
         }
 
         public static bool ExisteScriptParaEvento(string evento)
@@ -297,17 +324,15 @@ namespace EvaluacionSistema
             return TaskService.Instance.FindTask(evento) != null;
         }
 
-        public static void ProgramarScript(string script, string nombre, bool asociarEvento, string eventid, string task)
+        public static void ProgramarScript(string script, string nombre)
         {
             DateTime ejecucion = new DateTime(DateTime.Now.Year,
                         DateTime.Now.Month,
                         DateTime.Now.Day,
-                        int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsHoras"]),
-                        int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsMinutos"]),
+                        int.Parse(Util.ReadSetting("EjecucionScriptsHoras")),
+                        int.Parse(Util.ReadSetting("EjecucionScriptsMinutos")),
                         0);
-            //DateTime ejecucion = DateTime.Now.AddMinutes(1);
 
-            //Programar ejecucion en el mismo dia
             Task t = TaskService.Instance
                 .Execute(Directory.GetCurrentDirectory() + "\\" + script)
                 .Once()
@@ -316,25 +341,6 @@ namespace EvaluacionSistema
                 .AsTask(nombre);
             t.Definition.Principal.RunLevel = TaskRunLevel.Highest;
             t.Definition.Settings.DeleteExpiredTaskAfter = TimeSpan.FromSeconds(30);
-
-            if (asociarEvento)
-            {
-                //Asociar el script al evento
-                t.Definition.Triggers.Add(new EventTrigger
-                {
-                    StartBoundary = new DateTime(DateTime.Now.Year,
-                            DateTime.Now.Month,
-                            DateTime.Now.Day,
-                            int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsHoras"]),
-                            int.Parse(ConfigurationManager.AppSettings["EjecucionScriptsMinutos"]),
-                            0),
-                    Subscription = "<QueryList>" +
-                        "<Query Id='0' Path='System'>" +
-                        "<Select Path='System'> *[System[(EventID = " + eventid + ") and (Task = " + task + ")]] </Select >" +
-                        "</Query>" +
-                        "</QueryList>"
-                });
-            }
 
             t.RegisterChanges();
         }

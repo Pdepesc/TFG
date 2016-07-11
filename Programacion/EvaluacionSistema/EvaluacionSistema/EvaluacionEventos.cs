@@ -17,16 +17,14 @@ namespace EvaluacionSistema
 
         public static bool EvaluacionInicial(MySqlConnection conn)
         {
-            //string query = "*[System[(Level=1  or Level=2) and TimeCreated[timediff(@SystemTime) <= 86400000]]]";
-            string query = "*[System[(Level = 1  or Level = 2)]]";
-            EventLogQuery eventsQuery = new EventLogQuery("System", PathType.LogName, query);
-
             try
             {
+                string query = "*[System[(Level = 1  or Level = 2 or Level = 3)]]";
+                EventLogQuery eventsQuery = new EventLogQuery("System", PathType.LogName, query);
                 EventLogReader logReader = new EventLogReader(eventsQuery);
 
                 string id, qualifiers, version, level, task, opcode;
-                string modelo = ConfigurationManager.AppSettings["Modelo"];
+                string modelo = Util.ReadSetting("Modelo");
 
                 MySqlCommand cmd = new MySqlCommand();
                 cmd.Connection = conn;
@@ -50,20 +48,19 @@ namespace EvaluacionSistema
 
                         cmd.CommandText = sqlInsert;
                         cmd.ExecuteNonQuery();
-                        Console.WriteLine("Evento añadido");
                     }
-                    catch (MySqlException e)
+                    catch (Exception e)
                     {
-                        Console.WriteLine("Evento duplicado");
+                        //Si el evento ya esta insertado en la BBDD continuamos con el resto del bucle
                         continue;
                     }
 
                 }
                 return true;
             }
-            catch (EventLogNotFoundException e)
+            catch (Exception e)
             {
-                Console.WriteLine("Error while reading the event logs");
+                Console.WriteLine("\r\n\r\nError en la evaluacion inicial de los eventos: \r\n\t{0}", e.ToString());
                 return false;
             }
         }
@@ -76,23 +73,21 @@ namespace EvaluacionSistema
         {
             try
             {
-                Console.WriteLine("---Eventos---\r\n");
+                Console.WriteLine("---Eventos---\r\n\r\n");
 
                 Console.Write("\tComprobando eventos del sistema... ");
                 
                 //List<EventRecord>[Critico, Error, Advertencia]
-                List<EventRecord>[] eventos = ReadEventLog();   //Lee eventos desde el ultimo inicio del sistema
+                List<EventRecord>[] eventos = ReadEventLog();
 
                 Console.WriteLine("Eventos del sistema comprobados!");
 
                 if (eventos[0].Count > 0 || eventos[1].Count > 0 || eventos[2].Count > 0)
                 {
                     Informe(eventos);
-                    if (eventos[0].Count > 0 || eventos[1].Count > 0)
-                    {
-                        eventos[0].AddRange(eventos[1]);
-                        SolucionarEventos(eventos[0], conn);
-                    }
+                    eventos[0].AddRange(eventos[1]);
+                    eventos[0].AddRange(eventos[2]);
+                    SolucionarEventos(eventos[0], conn);
                 }
                 return eventos[0].Count + eventos[1].Count + eventos[2].Count;
             }
@@ -110,42 +105,31 @@ namespace EvaluacionSistema
             List<EventRecord> errores = new List<EventRecord>();
             List<EventRecord> advertencias = new List<EventRecord>();
 
-            PerformanceCounter systemUpTime = new PerformanceCounter("System", "System Up Time");
+            float time = float.Parse(Util.ReadSetting("IntervaloEjecucion")) * 60 * 60 * 1000; //horas * minutos * segundos * milisegundos
 
-            systemUpTime.NextValue();
-            float time = systemUpTime.NextValue() * 1000;
-
-            string query = "*[System[(Level = 1  or Level = 2 or Level = 3) and TimeCreated[timediff(@SystemTime) <= " + time + "]]]";
-            //string query = "*[System[(Level = 1  or Level = 2 or Level = 3) and TimeCreated[timediff(@SystemTime) <= 43200000]]]";
+            string query = "*[System[(Level = 1  or Level = 2 or Level = 3) and " +
+                "TimeCreated[timediff(@SystemTime) <= " + time + "]]]";
             EventLogQuery eventsQuery = new EventLogQuery("System", PathType.LogName, query);
+            
+            EventLogReader logReader = new EventLogReader(eventsQuery);
 
-            try
+            for (EventRecord eventdetail = logReader.ReadEvent(); eventdetail != null; eventdetail = logReader.ReadEvent())
             {
-                EventLogReader logReader = new EventLogReader(eventsQuery);
-
-                for (EventRecord eventdetail = logReader.ReadEvent(); eventdetail != null; eventdetail = logReader.ReadEvent())
-                {
-                    // Read Event details
-                    if (eventdetail.Level == 1)
-                        criticos.Add(eventdetail);
-                    else if (eventdetail.Level == 2)
-                        errores.Add(eventdetail);
-                    else
-                        advertencias.Add(eventdetail);
-                }
-                return new List<EventRecord>[]{ criticos, errores, advertencias};
+                // Read Event details
+                if (eventdetail.Level == 1)
+                    criticos.Add(eventdetail);
+                else if (eventdetail.Level == 2)
+                    errores.Add(eventdetail);
+                else
+                    advertencias.Add(eventdetail);
             }
-            catch (EventLogNotFoundException e)
-            {
-                Console.WriteLine("Error while reading the event logs");
-                return null;
-            }
+            return new List<EventRecord>[]{ criticos, errores, advertencias};
         }
 
         public static void SolucionarEventos(List<EventRecord> eventos, MySqlConnection conn)
         {
             string id, qualifiers, version, level, task, opcode;
-            string modelo = ConfigurationManager.AppSettings["Modelo"];
+            string modelo = Util.ReadSetting("Modelo");
             string sqlGet = "SELECT * FROM Evento_Solucion WHERE ID = @id" +
                 " AND QUALIFIERS = @qualifiers" +
                 " AND VERSION = @version" +
@@ -204,7 +188,7 @@ namespace EvaluacionSistema
                             }
 
                             //si el bool lo ponemos a true el script se asocia al evento
-                            Util.ProgramarScript(pathScript, nombreEvento, false, id, task);
+                            Util.ProgramarScript(pathScript, nombreEvento);
 
                             break;
                         case "Manual":
@@ -242,11 +226,16 @@ namespace EvaluacionSistema
 
         #region Informe
 
-        public static void Informe(List<EventRecord>[] eventos)
+        private static void Informe(List<EventRecord>[] eventos)
         {
-            Console.Write("\tPostEvaluacion de Eventos....");
+            Console.Write("\tRealizando informe de Eventos....");
 
-            String path = "Informes/InformeEventos-" + DateTime.Now.Day + "-" + DateTime.Now.Month + "-" + DateTime.Now.Year + ".txt";
+            String path = "Informes/InformeEventos-" +
+                DateTime.Now.Day + "." +
+                DateTime.Now.Month + "." +
+                DateTime.Now.Year + " (" +
+                DateTime.Now.Hour + "." +
+                DateTime.Now.Minute + ").txt";
             using (StreamWriter sw = File.CreateText(path))
             {
                 sw.WriteLine("Eventos Criticos"); sw.WriteLine();
@@ -271,7 +260,7 @@ namespace EvaluacionSistema
                 }
             }
 
-            Console.WriteLine("Informe de Eventos hecho!");
+            Console.WriteLine("Informe realizado!");Console.Write("\tRealizando informe de Hardware....");
         }
 
         #endregion Informe
