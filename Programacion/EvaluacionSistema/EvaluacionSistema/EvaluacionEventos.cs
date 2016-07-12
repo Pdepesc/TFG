@@ -19,10 +19,15 @@ namespace EvaluacionSistema
         {
             try
             {
+                Console.WriteLine("---Registro---\r\n\r\n");
+
+                Console.Write("\tObteniendo eventos... ");
                 string query = "*[System[(Level = 1  or Level = 2 or Level = 3)]]";
                 EventLogQuery eventsQuery = new EventLogQuery("System", PathType.LogName, query);
                 EventLogReader logReader = new EventLogReader(eventsQuery);
+                Console.WriteLine("Eventos obtenidos!");
 
+                Console.Write("\tRegistrando eventos en la BBDD... ");
                 string id, qualifiers, version, level, task, opcode;
                 string modelo = Util.ReadSetting("Modelo");
 
@@ -56,6 +61,11 @@ namespace EvaluacionSistema
                     }
 
                 }
+
+                Console.WriteLine("Eventos registrados!");
+
+                Console.WriteLine("\r\n---Eventos/FIN---\r\n\r\n");
+
                 return true;
             }
             catch (Exception e)
@@ -89,7 +99,7 @@ namespace EvaluacionSistema
                     eventos[0].AddRange(eventos[2]);
                     SolucionarEventos(eventos[0], conn);
                 }
-                return eventos[0].Count + eventos[1].Count + eventos[2].Count;
+                return eventos[0].Count;
             }
             catch (Exception e)
             {
@@ -105,7 +115,7 @@ namespace EvaluacionSistema
             List<EventRecord> errores = new List<EventRecord>();
             List<EventRecord> advertencias = new List<EventRecord>();
 
-            float time = float.Parse(Util.ReadSetting("IntervaloEjecucion")) * 60 * 60 * 1000; //horas * minutos * segundos * milisegundos
+            int time = int.Parse(Util.ReadSetting("IntervaloEjecucion")) * 60 * 60 * 1000; //horas * minutos * segundos * milisegundos
 
             string query = "*[System[(Level = 1  or Level = 2 or Level = 3) and " +
                 "TimeCreated[timediff(@SystemTime) <= " + time + "]]]";
@@ -260,7 +270,7 @@ namespace EvaluacionSistema
                 }
             }
 
-            Console.WriteLine("Informe realizado!");Console.Write("\tRealizando informe de Hardware....");
+            Console.WriteLine("Informe realizado!\r\n");
         }
 
         #endregion Informe

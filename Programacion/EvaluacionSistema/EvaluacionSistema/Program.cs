@@ -45,7 +45,7 @@ namespace EvaluacionSistema
                         Util.InicializarTareaProgramada();
                         Util.AddUpdateAppSettings("ModoEvaluacion", "Completa");
 
-                        Console.WriteLine("\r\n\r\nEvaluacion inicial finalizada con éxito!");
+                        Console.WriteLine("\r\nEvaluacion inicial finalizada con éxito!");
                     }
                     else
                     {
@@ -60,7 +60,7 @@ namespace EvaluacionSistema
                 {
                     #region EvaluacionCompleta
 
-                    Console.WriteLine("Iniciando evaluacion completa de la estacion...");
+                    Console.WriteLine("Iniciando evaluacion completa de la estacion...\r\n");
 
                     ResultadoEvaluacion resultado = new ResultadoEvaluacion(
                         EvaluacionHardware.EvaluacionCompleta(conn),
@@ -98,26 +98,30 @@ namespace EvaluacionSistema
             }
             catch (MySqlException ex)
             {
-                Console.WriteLine("¡Conexion a la BBDD remota fallida!\r\n");
+                Console.WriteLine("\r\n¡Conexion a la BBDD remota fallida!\r\n");
                 Console.WriteLine("Error: {0}", ex.ToString());
-                Console.WriteLine("Conectando a la BBDD local");
-                //Si no hay conexion a la BBDD remota usamos la local
-                conn.ConnectionString = ConfigurationManager.ConnectionStrings["LocalBBDD"].ConnectionString;
-                conn.Open();
 
-                //Revisar los metodos para que no se conecten al servidor y, cambiar las funciones que dependan de la red o quitarlas
-
+                //Console.WriteLine("Conectando a la BBDD local");
+                ////Si no hay conexion a la BBDD remota usamos la local
+                //conn.ConnectionString = ConfigurationManager.ConnectionStrings["LocalBBDD"].ConnectionString;
+                //conn.Open();
+                
                 /*
-                 SI NO HAY CONEXION:
-                  - HARDWARE: COMPARACION CON BBDD LOCAL
-                  - REGISTRO: OMITIR COMPROBACION DE ULTIMA VERSION Y USAR FICHERO LOCAL
-                  - EVENTOS: BUSCAR ERRORES Y SI TIENEN SOLUCION EN LOCAL, SINO NO HACER NADA
-                  - INFORMES: NO ENVIAR
-                  - RESULTADOS EVALUACION QUE HABRIA QUE AÑADIR A LA BBDD A MODO DE HISTORIAL: NO ENVIAR
-                  (VENDRIA A EQUIVALER A CAPAR TODAS LAS FUNCIONES QUE DEPENDAN DE RED Y SUSTITUIRLAS POR LOCAL O QUITARLAS)
+                 **ASUMIMOS QUE DURANTE LA EVALUACION INICIAL HABRA CONEXION AL SERVIDOR
+                  - BLOQUE: Comportamiento que deberia tener sin conexion (Qué hacer cuando haya conexion)
 
-                  SI PONGO METODOS ESPECIFICOS PARA FUNCIONAR SIN CONEXION HABRA QUE ACTUALIZAR LOS DE QUE SÍ TIENEN CONEXION
-                  PARA QUE ACTUALICEN LAS COSAS DE LA BBDD LOCAL DE MODO QUE LOS METODOS SIN CONEXION PUEDAN FUNCIONAR
+                  - HARDWARE: COMPARACION CON BBDD LOCAL 
+                                (actualizar BBDD local, tablas Estacion y Hardware y, vista Medias)
+                  - REGISTRO: COMPARACION CON FICHERO LOCAL 
+                                (actualizar BBDD local, tablas Registro y Estacion;
+                                    comprobar version del fichero y, si es necesario, actualizarlo)
+                  - EVENTOS: BUSCAR EVENTOS Y EJECUTAR LOS SCRIPTS DISPONIBLES EN LOCAL QUE CORRESPONDAN 
+                                (actualizar BBDD local, tablas Evento_Solucion;
+                                    descargar scripts disponibles en el servidor)
+                  - INFORMES: GENERARLOS PERO NO ENVIARLOS
+                                (enviar todos los que haya y borrarlos tras el envio)
+                  - RESULTADOS EVALUACION: REFLEJARLOS EN LA BBDD LOCAL
+                                (sincronizar BBDD local a Remota, INSERT/UPDATE tabla Evaluacion)
                 */
             }
             finally

@@ -17,8 +17,9 @@ namespace EvaluacionSistema
 
         public static bool EvaluacionInicial(MySqlConnection conn)
         {
-            try {
-                Console.WriteLine("---Registro---\r\n\r\n");
+            try
+            {
+                Console.WriteLine("---Registro---\r\n");
 
                 Console.Write("\tComprobando version del registro... ");
                 ComprobarVersionRegistro(conn);
@@ -28,8 +29,10 @@ namespace EvaluacionSistema
                 int[] fallos = ComprobarContenidoRegistro();
                 Console.WriteLine("Valores del registro comprobados!\r\n");
 
-                Console.WriteLine("{0} registros erróneos: {1} corregidos - {2} sin corregir", fallos[0] + fallos[1], fallos[0], fallos[1]);
-                                
+                Console.WriteLine("\t{0} registros erróneos: {1} corregidos - {2} sin corregir", fallos[0] + fallos[1], fallos[0], fallos[1]);
+
+                Console.WriteLine("\r\n---Registro/FIN---\r\n\r\n");
+
                 return true;
             }
             catch (Exception e)
@@ -92,7 +95,7 @@ namespace EvaluacionSistema
 
                 Console.WriteLine("Valores del registro comprobados!\r\n");
 
-                Console.WriteLine("\t{0} registro erróneos: {1} corregidos - {2} sin corregir", fallos[0].Count + fallos[1].Count, fallos[0].Count, fallos[1].Count);
+                Console.WriteLine("\t{0} registro erróneos: {1} corregidos - {2} sin corregir\r\n", fallos[0].Count + fallos[1].Count, fallos[0].Count, fallos[1].Count);
 
                 if ((fallos[0].Count > 0) || (fallos[1].Count > 0))
                 {
@@ -169,7 +172,7 @@ namespace EvaluacionSistema
                 }
             }
             
-            Console.WriteLine("Informe realizado!");
+            Console.WriteLine("Informe realizado!\r\n");
         }
 
         #endregion Informe

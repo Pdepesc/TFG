@@ -21,7 +21,7 @@ namespace EvaluacionSistema
         {
             try
             {
-                Console.WriteLine("---Hardware---\r\n\r\n");
+                Console.WriteLine("---Hardware---\r\n");
 
                 //Actualizar componentes hardware 100 veces
                 Console.Write("\tActualizando componentes hardware... ");
@@ -34,9 +34,9 @@ namespace EvaluacionSistema
                 MySqlCommand cmd = new MySqlCommand(sql, conn);
                 cmd.ExecuteNonQuery();
                 
-                Console.WriteLine("Componentes añadidos!\r\n");
+                Console.WriteLine("Componentes añadidos!");
 
-                Console.WriteLine("---Hardware/FIN---\r\n\r\n");
+                Console.WriteLine("\r\n---Hardware/FIN---\r\n\r\n");
 
                 return true;
             }
@@ -123,11 +123,13 @@ namespace EvaluacionSistema
             //Obtener datos de Hardware
             string sql = "select H.Identificador, M.Minimo, M.Maximo, H.UmbralFallo " +
                 "from (select * from Hardware where ID_Estacion = @idEstacion) as H " +
-                "left join Medias as M on H.Identificador = M.Identificador";
+                "left join Medias as M on H.Identificador = M.Identificador " +
+                "where M.Modelo = @modeloEstacion";
 
             MySqlCommand cmd = new MySqlCommand(sql, conn);
             cmd.Prepare();
 
+            cmd.Parameters.AddWithValue("@idEstacion", Util.ReadSetting("IdEstacion"));
             cmd.Parameters.AddWithValue("@modeloEstacion", Util.ReadSetting("Modelo"));
 
             MySqlDataReader rdr = cmd.ExecuteReader();
@@ -195,7 +197,7 @@ namespace EvaluacionSistema
                 GetReport(sw);
             }
 
-            Console.WriteLine("Informe realizado!");
+            Console.WriteLine("Informe realizado!\r\n");
         }
         
         private static void GetReport(StreamWriter sw)
